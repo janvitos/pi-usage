@@ -42,7 +42,7 @@ test("usage status is appended to the built-in footer stats line", () => {
 
 	const lines = component.render(100);
 	assert.equal(lines.length, 3);
-	assert.match(lines[1] ?? "", /70% \(wk\)$/u);
+	assert.match(lines[1] ?? "", /\(auto\) 70% \(wk\)$/u);
 	assert.doesNotMatch(lines[1] ?? "", /test-model/u);
 	assert.doesNotMatch(lines[1] ?? "", /other status/u);
 	assert.equal(lines[2], "other status");

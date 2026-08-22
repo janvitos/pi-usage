@@ -3,11 +3,9 @@ import {
 	FooterComponent,
 	type ReadonlyFooterDataProvider,
 } from "@earendil-works/pi-coding-agent";
-import { stripTerminalSequences, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { stripTerminalSequences, truncateToWidth } from "@earendil-works/pi-tui";
 
 const USAGE_STATUS_KEY = "usage";
-const USAGE_GAP = 2;
-
 type FooterSession = ConstructorParameters<typeof FooterComponent>[0];
 
 /** Install the built-in footer with pi-usage appended to its stats line. */
@@ -63,13 +61,8 @@ export function installUsageFooter(ctx: ExtensionContext): void {
 					: secondLine.trimEnd();
 				const usage = footerData.getExtensionStatuses().get(USAGE_STATUS_KEY);
 				const usageText = usage ? stripTerminalSequences(usage) : "";
-				const usageWidth = visibleWidth(usageText);
-				const availableForStats = usageText ? Math.max(0, width - usageWidth - USAGE_GAP) : width;
-				const truncatedStats = truncateToWidth(stats, availableForStats, "");
-				const padding = usageText
-					? " ".repeat(Math.max(1, width - visibleWidth(truncatedStats) - usageWidth))
-					: "";
-				lines[1] = theme.fg("dim", `${truncatedStats}${padding}${usageText}`);
+				const combined = usageText ? `${stats} ${usageText}` : stats;
+				lines[1] = theme.fg("dim", truncateToWidth(combined, width, ""));
 				return lines;
 			},
 		};
