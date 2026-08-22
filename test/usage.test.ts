@@ -116,7 +116,7 @@ test("/usage automatically queries the current runtime account and shows state p
 		"View all configured providers…",
 		"Close",
 	]);
-	assert.equal(statuses.get("usage"), "openrouter $75.00 left");
+	assert.equal(statuses.get("usage"), "$75.00 left");
 });
 
 test("current Codex usage can redeem a selected reset and refresh account state", async (t) => {
@@ -212,7 +212,7 @@ test("current Codex usage can redeem a selected reset and refresh account state"
 	});
 	assert.equal(new Headers(consume.init?.headers).get("chatgpt-account-id"), "account-123");
 	assert.ok(usageRequests >= 2);
-	assert.equal(statuses.get("usage"), "codex 100% 5h");
+	assert.equal(statuses.get("usage"), "100% (5h)");
 	assert.match(titles.at(-1) ?? "", /Usage reset.*0 usage limit resets left/isu);
 });
 
@@ -342,7 +342,7 @@ test("explicit all-provider query labels current/configured and retains provider
 	assert.match(titles[1] ?? "", /OpenRouter Usage · Current/);
 	assert.match(titles[1] ?? "", /OpenAI Codex · Configured/);
 	assert.match(titles[1] ?? "", /query failed/i);
-	assert.equal(statuses.get("usage"), "openrouter $75.00 left");
+	assert.equal(statuses.get("usage"), "$75.00 left");
 });
 
 test("another-provider queries show only the selected provider and preserve current status", async (t) => {
@@ -378,7 +378,7 @@ test("another-provider queries show only the selected provider and preserve curr
 
 	assert.match(titles.at(-1) ?? "", /OpenAI Codex Usage · Configured/);
 	assert.doesNotMatch(titles.at(-1) ?? "", /OpenRouter Usage · Current/);
-	assert.equal(statuses.get("usage"), "openrouter $75.00 left");
+	assert.equal(statuses.get("usage"), "$75.00 left");
 });
 
 test("unsupported providers remain visible without publishing an error status", async () => {
@@ -496,7 +496,7 @@ test("usage status is rendered with the footer dim color", async (t) => {
 	mock.events.get("session_start")?.[0]?.({}, ctx);
 	await settle();
 
-	assert.equal(statuses.get("usage"), "<dim>openrouter $75.00 left</dim>");
+	assert.equal(statuses.get("usage"), "<dim>$75.00 left</dim>");
 	mock.events.get("session_shutdown")?.[0]?.({}, ctx);
 });
 
@@ -776,11 +776,11 @@ test("a current command supersedes an older automatic query for the same provide
 	while (fetches < 1) await settle();
 	activeKey = "account-b";
 	await command.handler("", ctx);
-	assert.equal(statuses.get("usage"), "openrouter $40.00 left");
+	assert.equal(statuses.get("usage"), "$40.00 left");
 
 	resolveOldFetch(response("account-a", 75));
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $40.00 left");
+	assert.equal(statuses.get("usage"), "$40.00 left");
 });
 
 test("cross-provider results revalidate which account is Current before display", async (t) => {
@@ -869,7 +869,7 @@ test("session shutdown clears status through the shutdown context", async (t) =>
 
 	mock.events.get("session_start")?.[0]?.({}, startContext);
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $75.00 left");
+	assert.equal(statuses.get("usage"), "$75.00 left");
 	mock.events.get("session_shutdown")?.[0]?.({}, shutdownContext);
 	assert.equal(statuses.get("usage"), undefined);
 });
@@ -919,11 +919,11 @@ test("a slow command cannot overwrite status after the selected model changes", 
 	Object.assign(ctx, { model: codexModel });
 	mock.events.get("model_select")?.[0]?.({ model: codexModel }, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "codex 80% 5h");
+	assert.equal(statuses.get("usage"), "80% (5h)");
 
 	resolveSlowFetch(await usageFetch("https://openrouter.ai/api/v1/key"));
 	await commandPromise;
-	assert.equal(statuses.get("usage"), "codex 80% 5h");
+	assert.equal(statuses.get("usage"), "80% (5h)");
 });
 
 test("statusline follows runtime auth changes and clears for unsupported selected providers", async (t) => {
@@ -979,17 +979,17 @@ test("statusline follows runtime auth changes and clears for unsupported selecte
 
 	mock.events.get("session_start")?.[0]?.({}, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $75.00 left");
+	assert.equal(statuses.get("usage"), "$75.00 left");
 
 	activeKey = "account-b";
 	mock.events.get("turn_start")?.[0]?.({}, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $40.00 left");
+	assert.equal(statuses.get("usage"), "$40.00 left");
 
 	activeKey = "account-a";
 	mock.events.get("turn_start")?.[0]?.({}, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $20.00 left");
+	assert.equal(statuses.get("usage"), "$20.00 left");
 	assert.equal(fetches, 3);
 
 	mock.events.get("model_select")?.[0]?.(
@@ -1007,7 +1007,7 @@ test("statusline follows runtime auth changes and clears for unsupported selecte
 
 	mock.events.get("model_select")?.[0]?.({ model: openRouterModel }, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $10.00 left");
+	assert.equal(statuses.get("usage"), "$10.00 left");
 	assert.equal(fetches, 4);
 
 	const proxyModel = { ...openRouterModel, baseUrl: "https://proxy.example.test/v1" };
@@ -1019,6 +1019,6 @@ test("statusline follows runtime auth changes and clears for unsupported selecte
 	Object.assign(ctx, { model: openRouterModel });
 	mock.events.get("model_select")?.[0]?.({ model: openRouterModel }, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "openrouter $5.00 left");
+	assert.equal(statuses.get("usage"), "$5.00 left");
 	assert.equal(fetches, 5);
 });

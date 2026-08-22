@@ -32,9 +32,9 @@ export function formatUsageStatusline(report: UsageReport, model?: UsageModel): 
 	if (report.providerId === "github-copilot") return formatGitHubCopilotStatusline(report);
 	if (report.providerId === "openrouter") {
 		const limit = report.buckets.find((bucket) => bucket.id === "key-limit");
-		if (limit?.remaining !== undefined) return `openrouter ${formatUsd(limit.remaining)} left`;
+		if (limit?.remaining !== undefined) return `${formatUsd(limit.remaining)} left`;
 		const total = report.metrics.find((metric) => metric.id === "usage-total");
-		if (typeof total?.value === "number") return `openrouter ${formatUsd(total.value)} used`;
+		if (typeof total?.value === "number") return `${formatUsd(total.value)} used`;
 	}
 	if (report.providerId === "opencode-go") return formatOpenCodeZenStatusline(report);
 	return undefined;
@@ -100,12 +100,12 @@ function formatGitHubCopilotStatusline(report: UsageReport): string {
 	const quota = findGitHubCopilotQuota(report);
 	const kind = compactGitHubCopilotQuotaKind(quota);
 	if (!quota || quota.limit === undefined || quota.remaining === undefined) {
-		return `copilot ${kind} unlimited`;
+		return `${kind} unlimited`;
 	}
 	const overage = report.metrics.find((metric) => metric.id === "overage-used");
 	const overageSuffix =
 		typeof overage?.value === "number" && overage.value > 0 ? ` +${overage.value} over` : "";
-	return `copilot ${kind === "premium" ? "" : `${kind} `}${quota.remaining}/${quota.limit} ${percentRemaining(quota)}%${overageSuffix}`;
+	return `${kind === "premium" ? "" : `${kind} `}${quota.remaining}/${quota.limit} ${percentRemaining(quota)}%${overageSuffix}`;
 }
 
 function findGitHubCopilotQuota(report: UsageReport): UsageBucket | undefined {
@@ -151,13 +151,13 @@ function formatOpenCodeZenReport(lines: string[], report: UsageReport): void {
 }
 
 function formatOpenCodeZenStatusline(report: UsageReport): string | undefined {
-	const parts = ["zen"];
+	const parts: string[] = [];
 	for (const bucket of report.buckets) {
 		if (bucket.used === undefined) continue;
 		const compact = bucket.id === "rolling" ? "r" : bucket.id === "weekly" ? "w" : "m";
-		parts.push(`${clampPercent(bucket.used).toFixed(0)}% ${compact}`);
+		parts.push(`${clampPercent(bucket.used).toFixed(0)}% (${compact})`);
 	}
-	return parts.length > 1 ? parts.join(" ") : undefined;
+	return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
 function formatGenericReport(lines: string[], report: UsageReport): void {
@@ -177,27 +177,24 @@ function formatCodexStatusline(report: UsageReport, model?: UsageModel): string 
 	const group = selectCodexGroup(report, model);
 	if (!group) return formatCodexCreditsStatus(report);
 	const buckets = report.buckets.filter((bucket) => (bucket.groupId ?? bucket.id) === group);
-	const labelBucket = buckets[0];
-	const parts = [
-		group === "codex" ? "codex" : `codex ${compactLimitLabel(labelBucket?.groupLabel ?? group)}`,
-	];
+	const parts: string[] = [];
 	for (const bucket of buckets) {
 		if (bucket.remaining === undefined) continue;
 		const fallback = bucket.id.endsWith(":secondary") ? "weekly" : "5h";
 		parts.push(
-			`${clampPercent(bucket.remaining).toFixed(0)}% ${formatWindowLabel(bucket.windowMinutes, fallback, true)}`,
+			`${clampPercent(bucket.remaining).toFixed(0)}% (${formatWindowLabel(bucket.windowMinutes, fallback, true)})`,
 		);
 	}
-	return parts.length > 1 ? parts.join(" ") : formatCodexCreditsStatus(report);
+	return parts.length > 0 ? parts.join(" ") : formatCodexCreditsStatus(report);
 }
 
 function formatCodexCreditsStatus(report: UsageReport): string {
 	const credits = report.metrics.find((metric) => metric.id === "credits");
-	if (!credits) return "codex usage unavailable";
-	if (credits.value === "none") return "codex no credits";
-	if (credits.value === "available") return "codex credits available";
-	if (credits.value === "unlimited") return "codex credits unlimited";
-	return `codex ${formatMetricValue(credits.value, "count")} credits`;
+	if (!credits) return "usage unavailable";
+	if (credits.value === "none") return "no credits";
+	if (credits.value === "available") return "credits available";
+	if (credits.value === "unlimited") return "credits unlimited";
+	return `${formatMetricValue(credits.value, "count")} credits`;
 }
 
 function selectCodexGroup(report: UsageReport, model?: UsageModel): string | undefined {
@@ -258,13 +255,6 @@ function normalizedKeyHasToken(key: string, token: string): boolean {
 		key.endsWith(`-${token}`) ||
 		key.includes(`-${token}-`)
 	);
-}
-
-function compactLimitLabel(label: string): string {
-	const normalized = label.replace(/[_-]+/g, " ").trim();
-	const codex = /\bcodex\s/iu.exec(normalized);
-	const suffix = codex ? normalized.slice(codex.index + codex[0].length).trim() : "";
-	return (suffix || normalized).toLowerCase().replace(/\s+/g, " ");
 }
 
 function formatPercentBucket(bucket: UsageBucket): string {

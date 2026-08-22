@@ -21,6 +21,7 @@ import {
 	resolveCodexResetAuth,
 } from "./codex-resets.js";
 import { awaitWithDeadline, errorMessage, runWithConcurrency, UsageCache } from "./core.js";
+import { installUsageFooter } from "./footer.js";
 import { formatProviderStates, formatUsageStatusline } from "./format.js";
 import {
 	adapterForProvider,
@@ -931,15 +932,19 @@ export default function usageExtension(
 		activeControllers.clear();
 		statusController = undefined;
 		sessionActive = true;
+		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
 	pi.on("session_tree", (_event, ctx) => {
+		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
 	pi.on("model_select", (event, ctx) => {
+		installUsageFooter(ctx);
 		startStatusRefresh(ctx, event.model, false);
 	});
 	pi.on("turn_start", (_event, ctx) => {
+		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
 	pi.on("session_shutdown", (_event, ctx) => {
