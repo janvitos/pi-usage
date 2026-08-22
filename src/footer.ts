@@ -3,7 +3,7 @@ import {
 	FooterComponent,
 	type ReadonlyFooterDataProvider,
 } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { stripTerminalSequences, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 const USAGE_STATUS_KEY = "usage";
 const USAGE_GAP = 2;
@@ -14,10 +14,10 @@ type FooterSession = ConstructorParameters<typeof FooterComponent>[0];
 export function installUsageFooter(ctx: ExtensionContext): void {
 	if (ctx.mode !== "tui") return;
 
-	ctx.ui.setFooter((tui, _theme, footerData) => {
+	ctx.ui.setFooter((tui, theme, footerData) => {
 		const footerDataWithoutUsage: ReadonlyFooterDataProvider = {
 			getGitBranch: () => footerData.getGitBranch(),
-			getAvailableProviderCount: () => footerData.getAvailableProviderCount(),
+			getAvailableProviderCount: () => 1,
 			onBranchChange: (callback) => footerData.onBranchChange(callback),
 			getExtensionStatuses: () => {
 				const statuses = new Map(footerData.getExtensionStatuses());
@@ -51,20 +51,25 @@ export function installUsageFooter(ctx: ExtensionContext): void {
 			invalidate() {},
 			render(width: number): string[] {
 				const lines = builtInFooter.render(width);
+				const secondLine = stripTerminalSequences(lines[1] ?? "");
+				const model = ctx.model;
+				const modelName = model?.id || "no-model";
+				const thinkingLevel = ctx.thinkingLevel || "off";
+				const modelText = model?.reasoning
+					? `${modelName} • ${thinkingLevel === "off" ? "thinking off" : thinkingLevel}`
+					: modelName;
+				const stats = secondLine.endsWith(modelText)
+					? secondLine.slice(0, -modelText.length).trimEnd()
+					: secondLine.trimEnd();
 				const usage = footerData.getExtensionStatuses().get(USAGE_STATUS_KEY);
-				if (!usage) return lines;
-
-				const usageWidth = visibleWidth(usage);
-				if (usageWidth >= width) {
-					lines[1] = truncateToWidth(usage, width, "");
-					return lines;
-				}
-
-				const secondLine = lines[1] ?? "";
-				const availableForStats = Math.max(0, width - usageWidth - USAGE_GAP);
-				const stats = truncateToWidth(secondLine, availableForStats, "");
-				const padding = " ".repeat(Math.max(1, width - visibleWidth(stats) - usageWidth));
-				lines[1] = `${stats}${padding}${usage}`;
+				const usageText = usage ? stripTerminalSequences(usage) : "";
+				const usageWidth = visibleWidth(usageText);
+				const availableForStats = usageText ? Math.max(0, width - usageWidth - USAGE_GAP) : width;
+				const truncatedStats = truncateToWidth(stats, availableForStats, "");
+				const padding = usageText
+					? " ".repeat(Math.max(1, width - visibleWidth(truncatedStats) - usageWidth))
+					: "";
+				lines[1] = theme.fg("dim", `${truncatedStats}${padding}${usageText}`);
 				return lines;
 			},
 		};
