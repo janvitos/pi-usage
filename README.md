@@ -211,7 +211,7 @@ npm run check
 npm run pack:dry
 ```
 
-The GitHub Actions workflow publishes `@janvitos/pi-usage` when a `vX.Y.Z` tag matching `package.json` is pushed, or when the workflow is manually dispatched. Configure the repository’s `NPM_TOKEN` secret manually before publishing. The workflow also requests npm provenance.
+The GitHub Actions workflow publishes `@janvitos/pi-usage` when a `vX.Y.Z` tag matching `package.json` is pushed, or when the workflow is manually dispatched. Configure npm trusted publishing for the `janvitos/pi-usage` repository and `.github/workflows/publish.yml`; no long-lived npm token is required. Trusted publishing supplies npm provenance automatically.
 
 For a release:
 
