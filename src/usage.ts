@@ -919,6 +919,7 @@ export default function usageExtension(
 				return;
 			}
 			try {
+				installUsageFooter(ctx);
 				await showMenu(ctx);
 			} catch (error) {
 				if (isStaleExtensionContextError(error) || isAbortError(error)) return;
