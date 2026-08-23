@@ -4,11 +4,12 @@ import {
 	type ReadonlyFooterDataProvider,
 } from "@earendil-works/pi-coding-agent";
 import { stripTerminalSequences, truncateToWidth } from "@earendil-works/pi-tui";
+import { MUTED_USAGE_COLORS, usageStatusColor } from "./format.js";
 
 const USAGE_STATUS_KEY = "usage";
 type FooterSession = ConstructorParameters<typeof FooterComponent>[0];
 
-/** Install the built-in footer with pi-usage appended to its stats line. */
+/** Install the built-in footer with pi-usage on a dedicated status line. */
 export function installUsageFooter(ctx: ExtensionContext): void {
 	if (ctx.mode !== "tui") return;
 
@@ -59,7 +60,17 @@ export function installUsageFooter(ctx: ExtensionContext): void {
 				const stats = secondLine.endsWith(modelText)
 					? secondLine.slice(0, -modelText.length).trimEnd()
 					: secondLine.trimEnd();
-				lines[1] = theme.fg("dim", truncateToWidth(stats, width, ""));
+				const truncatedStats = truncateToWidth(stats, width, "");
+				const contextPercent = /(\d+(?:\.\d+)?)%(?=\/\S)/u.exec(truncatedStats);
+				if (contextPercent?.index !== undefined) {
+					const percentage = contextPercent[0];
+					const remaining = 100 - Number(contextPercent[1]);
+					const before = truncatedStats.slice(0, contextPercent.index);
+					const after = truncatedStats.slice(contextPercent.index + percentage.length);
+					lines[1] = `${theme.fg("dim", before)}${MUTED_USAGE_COLORS[usageStatusColor(remaining)]}${percentage}\u001b[39m${theme.fg("dim", after)}`;
+				} else {
+					lines[1] = theme.fg("dim", truncatedStats);
+				}
 				const usageText = footerData.getExtensionStatuses().get(USAGE_STATUS_KEY);
 				if (usageText) lines.splice(2, 0, truncateToWidth(usageText, width, ""));
 				return lines;

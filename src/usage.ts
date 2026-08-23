@@ -25,8 +25,8 @@ import { installUsageFooter } from "./footer.js";
 import {
 	formatProviderStates,
 	formatUsageStatusline,
+	MUTED_USAGE_COLORS,
 	styleUsageStatusline,
-	type UsageStatusColor,
 } from "./format.js";
 import {
 	adapterForProvider,
@@ -63,12 +63,6 @@ const VIEW_ANOTHER = "View another configured provider…";
 const VIEW_ALL = "View all configured providers…";
 const CLOSE = "Close";
 const REDEEM_CODEX_RESET = "Redeem usage limit reset…";
-
-const MUTED_USAGE_COLORS: Record<UsageStatusColor, string> = {
-	success: "\u001b[38;2;82;119;82m", // #527752
-	warning: "\u001b[38;2;120;107;58m", // #786b3a
-	error: "\u001b[38;2;144;92;87m", // #905c57
-};
 
 type UsageExtensionDependencies = {
 	credentialReader?: (providerId: string) => unknown;

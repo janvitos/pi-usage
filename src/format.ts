@@ -8,6 +8,12 @@ import type {
 
 export type UsageStatusColor = "success" | "warning" | "error";
 
+export const MUTED_USAGE_COLORS: Record<UsageStatusColor, string> = {
+	success: "\u001b[38;2;82;119;82m", // #527752
+	warning: "\u001b[38;2;120;107;58m", // #786b3a
+	error: "\u001b[38;2;144;92;87m", // #905c57
+};
+
 type UsageStatusStyler = {
 	color: (color: UsageStatusColor, text: string) => string;
 	dim: (text: string) => string;
@@ -64,12 +70,16 @@ export function styleUsageStatusline(
 		const index = match.index ?? 0;
 		const numeric = Number(match[1]);
 		const remaining = isUsedPercentage ? 100 - numeric : numeric;
-		const color = remaining >= 70 ? "success" : remaining >= 30 ? "warning" : "error";
+		const color = usageStatusColor(remaining);
 		styled += styler.dim(value.slice(cursor, index));
 		styled += styler.color(color, match[0]);
 		cursor = index + match[0].length;
 	}
 	return `${styled}${styler.dim(value.slice(cursor))}`;
+}
+
+export function usageStatusColor(remaining: number): UsageStatusColor {
+	return remaining >= 70 ? "success" : remaining >= 30 ? "warning" : "error";
 }
 
 export function formatProviderStates(states: readonly ProviderUsageState[]): string {
