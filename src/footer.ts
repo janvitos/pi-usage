@@ -3,7 +3,7 @@ import {
 	FooterComponent,
 	type ReadonlyFooterDataProvider,
 } from "@earendil-works/pi-coding-agent";
-import { stripTerminalSequences, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { stripTerminalSequences, truncateToWidth } from "@earendil-works/pi-tui";
 
 const USAGE_STATUS_KEY = "usage";
 type FooterSession = ConstructorParameters<typeof FooterComponent>[0];
@@ -59,17 +59,9 @@ export function installUsageFooter(ctx: ExtensionContext): void {
 				const stats = secondLine.endsWith(modelText)
 					? secondLine.slice(0, -modelText.length).trimEnd()
 					: secondLine.trimEnd();
-				const usageText = footerData.getExtensionStatuses().get(USAGE_STATUS_KEY) ?? "";
-				const usageWidth = visibleWidth(usageText);
-				if (usageWidth >= width) {
-					lines[1] = truncateToWidth(usageText, width, "");
-					return lines;
-				}
-				const availableForStats = usageText ? Math.max(0, width - usageWidth - 1) : width;
-				const truncatedStats = truncateToWidth(stats, availableForStats, "");
-				lines[1] = usageText
-					? `${theme.fg("dim", `${truncatedStats} `)}${usageText}`
-					: theme.fg("dim", truncatedStats);
+				lines[1] = theme.fg("dim", truncateToWidth(stats, width, ""));
+				const usageText = footerData.getExtensionStatuses().get(USAGE_STATUS_KEY);
+				if (usageText) lines.splice(2, 0, truncateToWidth(usageText, width, ""));
 				return lines;
 			},
 		};

@@ -6,7 +6,7 @@ import { createMockContext } from "../test-support.js";
 
 initTheme("dark", false);
 
-test("usage status is appended to the built-in footer stats line", () => {
+test("usage status gets a dedicated third footer line", () => {
 	const harness = createMockContext({
 		hasUI: true,
 		mode: "tui",
@@ -28,7 +28,7 @@ test("usage status is appended to the built-in footer stats line", () => {
 	assert.equal(typeof footer, "function");
 	const statuses = new Map([
 		["other", "other status"],
-		["usage", "70% (wk)"],
+		["usage", "70% (Jun 6 00:00)"],
 	]);
 	const footerData = {
 		getAvailableProviderCount: () => 1,
@@ -41,10 +41,10 @@ test("usage status is appended to the built-in footer stats line", () => {
 	)({ requestRender() {} }, ctx.ui.theme, footerData);
 
 	const lines = component.render(100);
-	assert.equal(lines.length, 3);
-	assert.match(lines[1] ?? "", /\(auto\) 70% \(wk\)$/u);
-	assert.doesNotMatch(lines[1] ?? "", /test-model/u);
-	assert.doesNotMatch(lines[1] ?? "", /other status/u);
-	assert.equal(lines[2], "other status");
+	assert.equal(lines.length, 4);
+	assert.match(lines[1] ?? "", /\(auto\)$/u);
+	assert.doesNotMatch(lines[1] ?? "", /test-model|70%|other status/u);
+	assert.equal(lines[2], "70% (Jun 6 00:00)");
+	assert.equal(lines[3], "other status");
 	component.dispose();
 });

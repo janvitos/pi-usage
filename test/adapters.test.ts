@@ -334,7 +334,7 @@ test("Codex status uses the window duration when a weekly limit is primary", () 
 			name: "GPT-5.3 Codex",
 			provider: "openai-codex",
 		}),
-		"70% (Jun 6)",
+		"70% (Jun 6 14:30)",
 	);
 });
 
@@ -409,7 +409,7 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 	assert.ok(secondary);
 	primary.resetsAt = new Date(2026, 3, 10, 14, 30).getTime() / 1000;
 	secondary.resetsAt = new Date(2026, 5, 6, 0, 0).getTime() / 1000;
-	assert.equal(formatUsageStatusline(report, codexModel), "40% (14:30) 20% (Jun 6)");
+	assert.equal(formatUsageStatusline(report, codexModel), "40% (14:30) 20% (Jun 6 00:00)");
 
 	const sparkBucket = report.buckets.find((bucket) => bucket.groupId === "gpt-5.3-codex-spark");
 	assert.ok(sparkBucket);
