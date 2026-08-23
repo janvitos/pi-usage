@@ -338,7 +338,7 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 		{
 			plan_type: "pro",
 			rate_limit: {
-				primary_window: { used_percent: 60, limit_window_seconds: 18_000, reset_at: 100 },
+				primary_window: { used_percent: 60, limit_window_seconds: 18_000 },
 				secondary_window: { used_percent: 80, limit_window_seconds: 604_800 },
 			},
 			credits: { has_credits: true, unlimited: false, balance: "12" },
@@ -373,14 +373,19 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 		}),
 		"90% (5h)",
 	);
-	assert.equal(
-		formatUsageStatusline(report, {
-			id: "gpt-5.3-codex",
-			name: "GPT-5.3 Codex",
-			provider: "openai-codex",
-		}),
-		"40% (5h) 20% (wk)",
-	);
+	const codexModel = {
+		id: "gpt-5.3-codex",
+		name: "GPT-5.3 Codex",
+		provider: "openai-codex",
+	};
+	assert.equal(formatUsageStatusline(report, codexModel), "40% (5h) 20% (wk)");
+	const primary = report.buckets.find((bucket) => bucket.id === "codex:primary");
+	const secondary = report.buckets.find((bucket) => bucket.id === "codex:secondary");
+	assert.ok(primary);
+	assert.ok(secondary);
+	primary.resetsAt = new Date(2026, 3, 10, 14, 30).getTime() / 1000;
+	secondary.resetsAt = new Date(2026, 5, 6, 0, 0).getTime() / 1000;
+	assert.equal(formatUsageStatusline(report, codexModel), "40% (14:30) 20% (Jun 6)");
 
 	const sparkBucket = report.buckets.find((bucket) => bucket.groupId === "gpt-5.3-codex-spark");
 	assert.ok(sparkBucket);

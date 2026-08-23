@@ -15,6 +15,20 @@ type UsageStatusStyler = {
 
 const BAR_SEGMENTS = 20;
 const VALUE_COLUMN = 29;
+const COMPACT_MONTHS = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec",
+] as const;
 
 export function formatUsageReport(report: UsageReport, displayState: UsageDisplayState): string {
 	const stateLabel = displayState === "current" ? "Current" : "Configured";
@@ -210,7 +224,7 @@ function formatCodexStatusline(report: UsageReport, model?: UsageModel): string 
 		if (bucket.remaining === undefined) continue;
 		const fallback = bucket.id.endsWith(":secondary") ? "weekly" : "5h";
 		parts.push(
-			`${clampPercent(bucket.remaining).toFixed(0)}% (${formatWindowLabel(bucket.windowMinutes, fallback, true)})`,
+			`${clampPercent(bucket.remaining).toFixed(0)}% (${formatCompactReset(bucket, fallback)})`,
 		);
 	}
 	return parts.length > 0 ? parts.join(" ") : formatCodexCreditsStatus(report);
@@ -305,6 +319,22 @@ function formatWindowLabel(
 	if (minutes % 1_440 === 0) return `${minutes / 1_440}d`;
 	if (minutes % 60 === 0) return `${minutes / 60}h`;
 	return `${minutes}m`;
+}
+
+function formatCompactReset(bucket: UsageBucket, fallback: "5h" | "weekly"): string {
+	if (bucket.resetsAt !== undefined) {
+		const reset = new Date(bucket.resetsAt * 1000);
+		if (!Number.isNaN(reset.getTime())) {
+			if (fallback === "5h") {
+				return `${reset.getHours().toString().padStart(2, "0")}:${reset
+					.getMinutes()
+					.toString()
+					.padStart(2, "0")}`;
+			}
+			return `${COMPACT_MONTHS[reset.getMonth()]} ${reset.getDate()}`;
+		}
+	}
+	return formatWindowLabel(bucket.windowMinutes, fallback, true);
 }
 
 function formatMetricValue(value: number | string, unit: UsageBucket["unit"] | undefined): string {
