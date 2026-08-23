@@ -314,8 +314,9 @@ test("OpenRouter adapter rejects malformed or empty documented responses", () =>
 	);
 });
 
-test("Codex status uses the window duration when a weekly limit is primary", () => {
-	const resetsAt = new Date(2026, 5, 6, 14, 30).getTime() / 1000;
+test("Codex status formats reset timestamps as a remaining-time countdown", () => {
+	const now = 1_800_000_000_000;
+	const resetsAt = (now + ((3 * 24 + 7) * 60 + 42) * 60_000) / 1000;
 	const report = normalizeCodexBackendPayload(
 		{
 			rate_limit: {
@@ -329,12 +330,16 @@ test("Codex status uses the window duration when a weekly limit is primary", () 
 		3_000,
 	);
 	assert.equal(
-		formatUsageStatusline(report, {
-			id: "gpt-5.3-codex",
-			name: "GPT-5.3 Codex",
-			provider: "openai-codex",
-		}),
-		"70% (Jun 6 14:30)",
+		formatUsageStatusline(
+			report,
+			{
+				id: "gpt-5.3-codex",
+				name: "GPT-5.3 Codex",
+				provider: "openai-codex",
+			},
+			now,
+		),
+		"70% (3d 7h 42m)",
 	);
 });
 
@@ -407,9 +412,12 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 	const secondary = report.buckets.find((bucket) => bucket.id === "codex:secondary");
 	assert.ok(primary);
 	assert.ok(secondary);
-	primary.resetsAt = new Date(2026, 3, 10, 14, 30).getTime() / 1000;
-	secondary.resetsAt = new Date(2026, 5, 6, 0, 0).getTime() / 1000;
-	assert.equal(formatUsageStatusline(report, codexModel), "40% (14:30) 20% (Jun 6 00:00)");
+	const now = 1_800_000_000_000;
+	primary.resetsAt = (now + (4 * 60 + 12) * 60_000) / 1000;
+	secondary.resetsAt = (now + ((3 * 24 + 7) * 60 + 42) * 60_000) / 1000;
+	assert.equal(formatUsageStatusline(report, codexModel, now), "40% (0d 4h 12m) 20% (3d 7h 42m)");
+	primary.resetsAt = (now - 1) / 1000;
+	assert.equal(formatUsageStatusline(report, codexModel, now), "40% (reset due) 20% (3d 7h 42m)");
 
 	const sparkBucket = report.buckets.find((bucket) => bucket.groupId === "gpt-5.3-codex-spark");
 	assert.ok(sparkBucket);

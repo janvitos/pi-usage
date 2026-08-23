@@ -28,7 +28,7 @@ test("usage status gets a dedicated third footer line", () => {
 	assert.equal(typeof footer, "function");
 	const statuses = new Map([
 		["other", "other status"],
-		["usage", "70% (Jun 6 00:00)"],
+		["usage", "70% (3d 7h 42m)"],
 	]);
 	const footerData = {
 		getAvailableProviderCount: () => 1,
@@ -44,7 +44,7 @@ test("usage status gets a dedicated third footer line", () => {
 	assert.equal(lines.length, 4);
 	assert.match(lines[1] ?? "", /\(auto\)$/u);
 	assert.doesNotMatch(lines[1] ?? "", /test-model|70%|other status/u);
-	assert.equal(lines[2], "70% (Jun 6 00:00)");
+	assert.equal(lines[2], "70% (3d 7h 42m)");
 	assert.equal(lines[3], "other status");
 	component.dispose();
 });

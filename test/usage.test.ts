@@ -532,6 +532,51 @@ test("automatic refresh does not schedule an idle five-minute query", async (t) 
 	mock.events.get("session_shutdown")?.[0]?.({}, ctx);
 });
 
+test("automatic refresh bypasses a cached report after its reset deadline", async (t) => {
+	const originalFetch = globalThis.fetch;
+	t.onTestFinished(() => {
+		globalThis.fetch = originalFetch;
+	});
+	let fetches = 0;
+	globalThis.fetch = async () => {
+		fetches += 1;
+		return new Response(
+			JSON.stringify({
+				plan_type: "pro",
+				rate_limit: {
+					primary_window: {
+						used_percent: 20,
+						limit_window_seconds: 18_000,
+						reset_at: Math.floor(Date.now() / 1000) - 1,
+					},
+				},
+			}),
+			{ status: 200 },
+		);
+	};
+	const mock = createMockPi();
+	usageExtension(mock.pi);
+	const { ctx } = createMockContext({
+		model: codexModel,
+		modelRegistry: {
+			getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "codex-token" }),
+			getProviderAuth: async () => ({ auth: { apiKey: "codex-token" } }),
+			getAvailable: () => [codexModel],
+			getAll: () => [codexModel],
+			getProviderAuthStatus: () => ({ configured: true }),
+			getProviderDisplayName: (provider: string) => provider,
+		},
+	});
+
+	mock.events.get("session_start")?.[0]?.({}, ctx);
+	await settle();
+	assert.equal(fetches, 1);
+	mock.events.get("turn_start")?.[0]?.({}, ctx);
+	await settle();
+	assert.equal(fetches, 2);
+	mock.events.get("session_shutdown")?.[0]?.({}, ctx);
+});
+
 test("TUI usage queries complete through the loader before opening the menu", async (t) => {
 	const originalFetch = globalThis.fetch;
 	t.onTestFinished(() => {

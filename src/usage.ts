@@ -226,7 +226,11 @@ export default function usageExtension(
 		}
 
 		const cached = !force ? cache.get(adapter.id, auth.fingerprint) : undefined;
-		if (cached) {
+		const now = Date.now();
+		const cachedResetPassed = cached?.buckets.some(
+			(bucket) => bucket.resetsAt !== undefined && bucket.resetsAt * 1000 <= now,
+		);
+		if (cached && !cachedResetPassed) {
 			return {
 				state: {
 					providerId: adapter.id,
@@ -238,6 +242,7 @@ export default function usageExtension(
 				fingerprint: auth.fingerprint,
 			};
 		}
+		if (cachedResetPassed) cache.clearProvider(adapter.id);
 
 		const failureKey = `${adapter.id}:${auth.fingerprint}`;
 		const previousFailure = failureBackoff.get(failureKey);

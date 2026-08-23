@@ -15,20 +15,6 @@ type UsageStatusStyler = {
 
 const BAR_SEGMENTS = 20;
 const VALUE_COLUMN = 29;
-const COMPACT_MONTHS = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-] as const;
 
 export function formatUsageReport(report: UsageReport, displayState: UsageDisplayState): string {
 	const stateLabel = displayState === "current" ? "Current" : "Configured";
@@ -48,8 +34,12 @@ export function formatUsageReport(report: UsageReport, displayState: UsageDispla
 	return lines.join("\n").trimEnd();
 }
 
-export function formatUsageStatusline(report: UsageReport, model?: UsageModel): string | undefined {
-	if (report.providerId === "openai-codex") return formatCodexStatusline(report, model);
+export function formatUsageStatusline(
+	report: UsageReport,
+	model?: UsageModel,
+	now = Date.now(),
+): string | undefined {
+	if (report.providerId === "openai-codex") return formatCodexStatusline(report, model, now);
 	if (report.providerId === "github-copilot") return formatGitHubCopilotStatusline(report);
 	if (report.providerId === "openrouter") {
 		const limit = report.buckets.find((bucket) => bucket.id === "key-limit");
@@ -215,7 +205,11 @@ function formatGenericReport(lines: string[], report: UsageReport): void {
 	}
 }
 
-function formatCodexStatusline(report: UsageReport, model?: UsageModel): string | undefined {
+function formatCodexStatusline(
+	report: UsageReport,
+	model: UsageModel | undefined,
+	now: number,
+): string | undefined {
 	const group = selectCodexGroup(report, model);
 	if (!group) return formatCodexCreditsStatus(report);
 	const buckets = report.buckets.filter((bucket) => (bucket.groupId ?? bucket.id) === group);
@@ -224,7 +218,7 @@ function formatCodexStatusline(report: UsageReport, model?: UsageModel): string 
 		if (bucket.remaining === undefined) continue;
 		const fallback = bucket.id.endsWith(":secondary") ? "weekly" : "5h";
 		parts.push(
-			`${clampPercent(bucket.remaining).toFixed(0)}% (${formatCompactReset(bucket, fallback)})`,
+			`${clampPercent(bucket.remaining).toFixed(0)}% (${formatResetCountdown(bucket, fallback, now)})`,
 		);
 	}
 	return parts.length > 0 ? parts.join(" ") : formatCodexCreditsStatus(report);
@@ -321,21 +315,20 @@ function formatWindowLabel(
 	return `${minutes}m`;
 }
 
-function formatCompactReset(bucket: UsageBucket, fallback: "5h" | "weekly"): string {
-	if (bucket.resetsAt !== undefined) {
-		const reset = new Date(bucket.resetsAt * 1000);
-		if (!Number.isNaN(reset.getTime())) {
-			const isShortWindow =
-				bucket.windowMinutes !== undefined ? bucket.windowMinutes < 1_440 : fallback === "5h";
-			const time = `${reset.getHours().toString().padStart(2, "0")}:${reset
-				.getMinutes()
-				.toString()
-				.padStart(2, "0")}`;
-			if (isShortWindow) return time;
-			return `${COMPACT_MONTHS[reset.getMonth()]} ${reset.getDate()} ${time}`;
-		}
+function formatResetCountdown(bucket: UsageBucket, fallback: "5h" | "weekly", now: number): string {
+	if (bucket.resetsAt === undefined) {
+		return formatWindowLabel(bucket.windowMinutes, fallback, true);
 	}
-	return formatWindowLabel(bucket.windowMinutes, fallback, true);
+	const remainingMs = bucket.resetsAt * 1000 - now;
+	if (!Number.isFinite(remainingMs)) {
+		return formatWindowLabel(bucket.windowMinutes, fallback, true);
+	}
+	if (remainingMs <= 0) return "reset due";
+	const totalMinutes = Math.floor(remainingMs / 60_000);
+	const days = Math.floor(totalMinutes / 1_440);
+	const hours = Math.floor((totalMinutes % 1_440) / 60);
+	const minutes = totalMinutes % 60;
+	return `${days}d ${hours}h ${minutes}m`;
 }
 
 function formatMetricValue(value: number | string, unit: UsageBucket["unit"] | undefined): string {
