@@ -22,7 +22,12 @@ import {
 } from "./codex-resets.js";
 import { awaitWithDeadline, errorMessage, runWithConcurrency, UsageCache } from "./core.js";
 import { installUsageFooter } from "./footer.js";
-import { formatProviderStates, formatUsageStatusline, styleUsageStatusline } from "./format.js";
+import {
+	formatProviderStates,
+	formatUsageStatusline,
+	styleUsageStatusline,
+	type UsageStatusColor,
+} from "./format.js";
 import {
 	adapterForProvider,
 	isStaleExtensionContextError,
@@ -58,6 +63,12 @@ const VIEW_ANOTHER = "View another configured provider…";
 const VIEW_ALL = "View all configured providers…";
 const CLOSE = "Close";
 const REDEEM_CODEX_RESET = "Redeem usage limit reset…";
+
+const MUTED_USAGE_COLORS: Record<UsageStatusColor, string> = {
+	success: "\u001b[38;5;65m", // muted green: #5f875f
+	warning: "\u001b[38;5;101m", // muted yellow: #87875f
+	error: "\u001b[38;5;95m", // muted red: #875f5f
+};
 
 type UsageExtensionDependencies = {
 	credentialReader?: (providerId: string) => unknown;
@@ -135,7 +146,7 @@ export default function usageExtension(
 		const value =
 			decoratedValue && ctx.mode === "tui" && ctx.ui.theme
 				? styleUsageStatusline(decoratedValue, outcome.state.report, {
-						color: (color, text) => `\u001b[2m${ctx.ui.theme.fg(color, text)}\u001b[22m`,
+						color: (color, text) => `${MUTED_USAGE_COLORS[color]}${text}\u001b[39m`,
 						dim: (text) => ctx.ui.theme.fg("dim", text),
 					})
 				: decoratedValue;
