@@ -325,7 +325,9 @@ function formatCompactReset(bucket: UsageBucket, fallback: "5h" | "weekly"): str
 	if (bucket.resetsAt !== undefined) {
 		const reset = new Date(bucket.resetsAt * 1000);
 		if (!Number.isNaN(reset.getTime())) {
-			if (fallback === "5h") {
+			const isShortWindow =
+				bucket.windowMinutes !== undefined ? bucket.windowMinutes < 1_440 : fallback === "5h";
+			if (isShortWindow) {
 				return `${reset.getHours().toString().padStart(2, "0")}:${reset
 					.getMinutes()
 					.toString()

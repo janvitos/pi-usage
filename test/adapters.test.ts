@@ -314,6 +314,30 @@ test("OpenRouter adapter rejects malformed or empty documented responses", () =>
 	);
 });
 
+test("Codex status uses the window duration when a weekly limit is primary", () => {
+	const resetsAt = new Date(2026, 5, 6, 14, 30).getTime() / 1000;
+	const report = normalizeCodexBackendPayload(
+		{
+			rate_limit: {
+				primary_window: {
+					used_percent: 30,
+					limit_window_seconds: 604_800,
+					reset_at: resetsAt,
+				},
+			},
+		},
+		3_000,
+	);
+	assert.equal(
+		formatUsageStatusline(report, {
+			id: "gpt-5.3-codex",
+			name: "GPT-5.3 Codex",
+			provider: "openai-codex",
+		}),
+		"70% (Jun 6)",
+	);
+});
+
 test("Codex adapter preserves credit availability without a numeric balance", () => {
 	const report = normalizeCodexBackendPayload(
 		{
