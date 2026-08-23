@@ -6,6 +6,13 @@ import type {
 	UsageReport,
 } from "./types.js";
 
+export type UsageStatusColor = "success" | "warning" | "error";
+
+type UsageStatusStyler = {
+	color: (color: UsageStatusColor, text: string) => string;
+	dim: (text: string) => string;
+};
+
 const BAR_SEGMENTS = 20;
 const VALUE_COLUMN = 29;
 
@@ -38,6 +45,27 @@ export function formatUsageStatusline(report: UsageReport, model?: UsageModel): 
 	}
 	if (report.providerId === "opencode-go") return formatOpenCodeZenStatusline(report);
 	return undefined;
+}
+
+export function styleUsageStatusline(
+	value: string,
+	report: UsageReport,
+	styler: UsageStatusStyler,
+): string {
+	const percentagePattern = /(\d+(?:\.\d+)?)%/gu;
+	const isUsedPercentage = report.providerId === "opencode-go";
+	let cursor = 0;
+	let styled = "";
+	for (const match of value.matchAll(percentagePattern)) {
+		const index = match.index ?? 0;
+		const numeric = Number(match[1]);
+		const remaining = isUsedPercentage ? 100 - numeric : numeric;
+		const color = remaining >= 70 ? "success" : remaining >= 30 ? "warning" : "error";
+		styled += styler.dim(value.slice(cursor, index));
+		styled += styler.color(color, match[0]);
+		cursor = index + match[0].length;
+	}
+	return `${styled}${styler.dim(value.slice(cursor))}`;
 }
 
 export function formatProviderStates(states: readonly ProviderUsageState[]): string {

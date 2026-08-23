@@ -6,7 +6,27 @@ import {
 	normalizeCodexBackendPayload,
 	normalizeGitHubCopilotUsagePayload,
 	normalizeOpenRouterKeyPayload,
+	styleUsageStatusline,
 } from "../src/index.js";
+
+test("usage percentage styling uses 70/30 remaining-quota thresholds", () => {
+	const report = normalizeCodexBackendPayload(
+		{
+			rate_limit: {
+				primary_window: { used_percent: 20, limit_window_seconds: 18_000 },
+			},
+		},
+		1,
+	);
+	const styled = styleUsageStatusline("80% (5h) 40% (wk) 10% (m)", report, {
+		color: (color, text) => `<${color}>${text}</${color}>`,
+		dim: (text) => `<dim>${text}</dim>`,
+	});
+	assert.equal(
+		styled,
+		"<dim></dim><success>80%</success><dim> (5h) </dim><warning>40%</warning><dim> (wk) </dim><error>10%</error><dim> (m)</dim>",
+	);
+});
 
 test("GitHub Copilot adapter normalizes legacy premium request quota", () => {
 	const report = normalizeGitHubCopilotUsagePayload(

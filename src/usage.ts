@@ -22,7 +22,7 @@ import {
 } from "./codex-resets.js";
 import { awaitWithDeadline, errorMessage, runWithConcurrency, UsageCache } from "./core.js";
 import { installUsageFooter } from "./footer.js";
-import { formatProviderStates, formatUsageStatusline } from "./format.js";
+import { formatProviderStates, formatUsageStatusline, styleUsageStatusline } from "./format.js";
 import {
 	adapterForProvider,
 	isStaleExtensionContextError,
@@ -94,11 +94,15 @@ export default function usageExtension(
 	let statusController: AbortController | undefined;
 	let fastRuntime: ReturnType<typeof registerCodexFastMode>;
 
-	const safeSetStatus = (ctx: ExtensionContext, value: string | undefined): boolean => {
+	const safeSetStatus = (
+		ctx: ExtensionContext,
+		value: string | undefined,
+		styled = false,
+	): boolean => {
 		try {
 			ctx.ui.setStatus(
 				STATUS_KEY,
-				value === undefined ? undefined : (ctx.ui.theme?.fg("dim", value) ?? value),
+				value === undefined || styled ? value : (ctx.ui.theme?.fg("dim", value) ?? value),
 			);
 			return true;
 		} catch (error) {
@@ -127,8 +131,15 @@ export default function usageExtension(
 			return;
 		}
 		const rawValue = formatUsageStatusline(outcome.state.report, model);
-		const value = rawValue ? fastRuntime.decorateStatus(model, rawValue) : undefined;
-		safeSetStatus(ctx, value);
+		const decoratedValue = rawValue ? fastRuntime.decorateStatus(model, rawValue) : undefined;
+		const value =
+			decoratedValue && ctx.mode === "tui" && ctx.ui.theme
+				? styleUsageStatusline(decoratedValue, outcome.state.report, {
+						color: (color, text) => `\u001b[2m${ctx.ui.theme.fg(color, text)}\u001b[22m`,
+						dim: (text) => ctx.ui.theme.fg("dim", text),
+					})
+				: decoratedValue;
+		safeSetStatus(ctx, value, ctx.mode === "tui");
 	};
 
 	const invalidateProviderState = (providerId: string) => {

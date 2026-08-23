@@ -31,7 +31,12 @@ export {
 	sanitizeDisplayText,
 	UsageCache,
 } from "./core.js";
-export { formatProviderStates, formatUsageReport, formatUsageStatusline } from "./format.js";
+export {
+	formatProviderStates,
+	formatUsageReport,
+	formatUsageStatusline,
+	styleUsageStatusline,
+} from "./format.js";
 export { normalizeCodexBackendPayload } from "./providers/codex.js";
 export { normalizeGitHubCopilotUsagePayload } from "./providers/github-copilot.js";
 export { normalizeOpenCodeZenPayload } from "./providers/opencode-zen.js";
