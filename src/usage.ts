@@ -66,7 +66,7 @@ const REDEEM_CODEX_RESET = "Redeem usage limit reset…";
 
 const MUTED_USAGE_COLORS: Record<UsageStatusColor, string> = {
 	success: "\u001b[38;5;65m", // muted green: #5f875f
-	warning: "\u001b[38;5;101m", // muted yellow: #87875f
+	warning: "\u001b[38;5;143m", // muted yellow: #afaf5f
 	error: "\u001b[38;5;95m", // muted red: #875f5f
 };
 
