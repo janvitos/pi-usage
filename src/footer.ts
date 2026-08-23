@@ -61,7 +61,7 @@ export function installUsageFooter(ctx: ExtensionContext): void {
 					: secondLine.trimEnd();
 				lines[1] = theme.fg("dim", truncateToWidth(stats, width, ""));
 				const usageText = footerData.getExtensionStatuses().get(USAGE_STATUS_KEY);
-				if (usageText) lines.splice(2, 0, truncateToWidth(usageText, width, ""));
+				if (usageText) lines.unshift(truncateToWidth(usageText, width, ""));
 				return lines;
 			},
 		};
