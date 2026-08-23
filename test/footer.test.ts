@@ -6,7 +6,7 @@ import { createMockContext } from "../test-support.js";
 
 initTheme("dark", false);
 
-test("usage status gets a dedicated first footer line", () => {
+test("usage status gets a dedicated third footer line", () => {
 	const harness = createMockContext({
 		hasUI: true,
 		mode: "tui",
@@ -42,9 +42,9 @@ test("usage status gets a dedicated first footer line", () => {
 
 	const lines = component.render(100);
 	assert.equal(lines.length, 4);
-	assert.equal(lines[0], "70% (Jun 6 00:00)");
-	assert.match(lines[2] ?? "", /\(auto\)$/u);
-	assert.doesNotMatch(lines[2] ?? "", /test-model|70%|other status/u);
+	assert.match(lines[1] ?? "", /\(auto\)$/u);
+	assert.doesNotMatch(lines[1] ?? "", /test-model|70%|other status/u);
+	assert.equal(lines[2], "70% (Jun 6 00:00)");
 	assert.equal(lines[3], "other status");
 	component.dispose();
 });
