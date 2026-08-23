@@ -65,9 +65,9 @@ const CLOSE = "Close";
 const REDEEM_CODEX_RESET = "Redeem usage limit reset…";
 
 const MUTED_USAGE_COLORS: Record<UsageStatusColor, string> = {
-	success: "\u001b[38;5;65m", // muted green: #5f875f
-	warning: "\u001b[38;5;143m", // muted yellow: #afaf5f
-	error: "\u001b[38;5;95m", // muted red: #875f5f
+	success: "\u001b[38;2;82;102;82m", // #526652
+	warning: "\u001b[38;2;103;96;70m", // #676046
+	error: "\u001b[38;2;117;88;85m", // #755855
 };
 
 type UsageExtensionDependencies = {
