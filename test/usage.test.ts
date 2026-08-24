@@ -66,6 +66,7 @@ test("pi-usage registers its usage and Fast commands with lifecycle hooks", () =
 	assert.equal(mock.commands.get("usage")?.getArgumentCompletions, undefined);
 	assert.equal(mock.commands.get("fast")?.getArgumentCompletions, undefined);
 	assert.deepEqual([...mock.events.keys()].sort(), [
+		"agent_settled",
 		"before_provider_request",
 		"message_end",
 		"model_select",
@@ -740,6 +741,49 @@ test("session shutdown aborts usage action and provider selectors", async (t) =>
 	assert.equal(dialogSignals.length, 2);
 	assert.equal(dialogSignals[0], dialogSignals[1]);
 	assert.equal(dialogSignals[0]?.aborted, true);
+});
+
+test("agent settled forces a fresh query while preserving successful status on failure", async (t) => {
+	const originalFetch = globalThis.fetch;
+	t.onTestFinished(() => {
+		globalThis.fetch = originalFetch;
+	});
+	let fetches = 0;
+	globalThis.fetch = async (input, init) => {
+		fetches += 1;
+		if (fetches === 1) return usageFetch(input, init);
+		return new Response("unavailable", { status: 503, statusText: "Unavailable" });
+	};
+	const mock = createMockPi();
+	usageExtension(mock.pi);
+	const harness = createMockContext({
+		model: codexModel,
+		modelRegistry: {
+			getApiKeyAndHeaders: async () => ({ ok: true, apiKey: "codex-token" }),
+			getProviderAuth: async () => ({ auth: { apiKey: "codex-token" } }),
+			getAvailable: () => [codexModel],
+			getAll: () => [codexModel],
+			getProviderAuthStatus: () => ({ configured: true }),
+			getProviderDisplayName: (provider: string) => provider,
+		},
+	});
+
+	mock.events.get("session_start")?.[0]?.({}, harness.ctx);
+	await settle();
+	const successfulStatus = harness.statuses.get("usage");
+	assert.match(successfulStatus ?? "", /80%/u);
+	assert.equal(fetches, 1);
+
+	mock.events.get("turn_start")?.[0]?.({}, harness.ctx);
+	await settle();
+	assert.equal(fetches, 1);
+	mock.events.get("agent_settled")?.[0]?.({}, harness.ctx);
+	await settle();
+	assert.equal(fetches, 2);
+	assert.equal(harness.statuses.get("usage"), successfulStatus);
+	mock.events.get("agent_settled")?.[0]?.({}, harness.ctx);
+	await settle();
+	assert.equal(fetches, 2);
 });
 
 test("automatic provider failures back off instead of retrying every turn", async (t) => {

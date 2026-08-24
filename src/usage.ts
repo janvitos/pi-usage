@@ -95,6 +95,7 @@ export default function usageExtension(
 	let querySequence = 0;
 	let activeCurrentIdentity: string | undefined;
 	let sessionActive = false;
+	let hasSuccessfulStatus = false;
 	let statusGeneration = 0;
 	let statusController: AbortController | undefined;
 	let fastRuntime: ReturnType<typeof registerCodexFastMode>;
@@ -117,6 +118,7 @@ export default function usageExtension(
 	};
 
 	const clearStatus = (ctx: ExtensionContext) => {
+		hasSuccessfulStatus = false;
 		statusGeneration += 1;
 		statusController?.abort();
 		statusController = undefined;
@@ -129,10 +131,12 @@ export default function usageExtension(
 			return;
 		}
 		if (outcome.state.status !== "ready") {
-			safeSetStatus(
-				ctx,
-				outcome.state.status === "auth-unavailable" ? "auth unavailable" : "usage error",
-			);
+			if (!hasSuccessfulStatus) {
+				safeSetStatus(
+					ctx,
+					outcome.state.status === "auth-unavailable" ? "auth unavailable" : "usage error",
+				);
+			}
 			return;
 		}
 		const rawValue = formatUsageStatusline(outcome.state.report, model);
@@ -144,7 +148,7 @@ export default function usageExtension(
 						dim: (text) => ctx.ui.theme.fg("dim", text),
 					})
 				: decoratedValue;
-		safeSetStatus(ctx, value, ctx.mode === "tui");
+		if (safeSetStatus(ctx, value, ctx.mode === "tui")) hasSuccessfulStatus = true;
 	};
 
 	const invalidateProviderState = (providerId: string) => {
@@ -162,6 +166,7 @@ export default function usageExtension(
 			activeCurrentIdentity = nextIdentity;
 			return;
 		}
+		hasSuccessfulStatus = false;
 		const previousProviderId = activeCurrentIdentity.split(":", 1)[0] ?? "";
 		for (const id of new Set([previousProviderId, providerId])) {
 			if (id) invalidateProviderState(id);
@@ -346,7 +351,7 @@ export default function usageExtension(
 		statusController = controller;
 		activeControllers.add(controller);
 		try {
-			if (!safeSetStatus(ctx, "checking")) return;
+			if (!hasSuccessfulStatus && !safeSetStatus(ctx, "checking")) return;
 			const outcome = await queryCurrentState(ctx, model, force, controller.signal);
 			if (!sessionActive || generation !== statusGeneration || controller.signal.aborted) return;
 			if (!(await outcomeStillCurrent(ctx, model, generation, outcome, controller.signal))) {
@@ -369,7 +374,7 @@ export default function usageExtension(
 	) => {
 		void refreshCurrentStatus(ctx, model, force).catch((error) => {
 			if (isStaleExtensionContextError(error) || isAbortError(error)) return;
-			safeSetStatus(ctx, "usage error");
+			if (!hasSuccessfulStatus) safeSetStatus(ctx, "usage error");
 		});
 	};
 
@@ -969,8 +974,15 @@ export default function usageExtension(
 		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
+	pi.on("agent_settled", (_event, ctx) => {
+		installUsageFooter(ctx);
+		const adapter = adapterForProvider(ctx.model?.provider);
+		if (adapter) cache.clearProvider(adapter.id);
+		startStatusRefresh(ctx, ctx.model, false);
+	});
 	pi.on("session_shutdown", (_event, ctx) => {
 		sessionActive = false;
+		hasSuccessfulStatus = false;
 		statusGeneration += 1;
 		for (const controller of activeControllers) controller.abort();
 		activeControllers.clear();
