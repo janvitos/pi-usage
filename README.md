@@ -38,7 +38,7 @@ npm run build
 pi -e .
 ```
 
-The package’s local entrypoint loads the generated `dist/index.ts` runtime, so an unbuilt local checkout must run the build before Pi loads the package directory.
+The package’s root `index.ts` entrypoint loads the generated `dist/index.ts` runtime, so an unbuilt local checkout must run the build before Pi loads the package directory.
 
 ## 🚀 Quick start
 
@@ -225,12 +225,12 @@ git push origin main --follow-tags
 
 ```txt
 ./
+├── index.ts               # Root Pi entrypoint loading the generated runtime
 ├── dist/                  # Generated TypeScript runtime loaded by Jiti
 ├── scripts/
 │   └── build-runtime.mjs  # Deterministic runtime builder and boundary validator
 ├── src/
-│   ├── index.ts       # Authoritative Pi package entrypoint and helper export barrel
-│   ├── pi-usage/      # Named local entrypoint wrapper
+│   ├── index.ts       # Authoritative source entrypoint and helper export barrel
 │   ├── usage.ts       # Menu, cache, and usage lifecycle orchestration
 │   ├── codex-fast.ts  # Fast eligibility, request tier, and cost correction
 │   ├── codex-fast-runtime.ts # Fast command, persistence lifecycle, and request hooks
@@ -249,7 +249,7 @@ git push origin main --follow-tags
 └── package.json
 ```
 
-`src/index.ts` is the authoritative Pi package entrypoint and forwards the default factory from `usage.ts` while retaining the package's named helper exports. `src/pi-usage/index.ts` is a named local wrapper that loads the generated runtime; other source modules are internal.
+`src/index.ts` is the authoritative source entrypoint and forwards the default factory from `usage.ts` while retaining the package's named helper exports. The root `index.ts` is the Pi package entrypoint and loads the generated runtime; other source modules are internal.
 
 The generated runtime is built from the authoritative `src/index.ts` graph and does not import back into `src`.
 

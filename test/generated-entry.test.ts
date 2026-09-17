@@ -18,7 +18,7 @@ test("declared generated entry preserves registration and partial lifecycle clea
 	const previousAgentDir = process.env.PI_CODING_AGENT_DIR;
 	process.env.PI_CODING_AGENT_DIR = join(root, "agent");
 	try {
-		const { default: extension } = await import("../dist/index.js");
+		const { default: extension } = await import("../index.js");
 		const mock = createMockPi();
 		await extension(mock.pi);
 		assert.ok(mock.commands.has("usage"));
