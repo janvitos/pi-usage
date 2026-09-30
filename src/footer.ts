@@ -51,16 +51,7 @@ export function installUsageFooter(ctx: ExtensionContext): void {
 			render(width: number): string[] {
 				const lines = builtInFooter.render(width);
 				const secondLine = stripTerminalSequences(lines[1] ?? "");
-				const model = ctx.model;
-				const modelName = model?.id || "no-model";
-				const thinkingLevel = ctx.thinkingLevel || "off";
-				const modelText = model?.reasoning
-					? `${modelName} • ${thinkingLevel === "off" ? "thinking off" : thinkingLevel}`
-					: modelName;
-				const stats = secondLine.endsWith(modelText)
-					? secondLine.slice(0, -modelText.length).trimEnd()
-					: secondLine.trimEnd();
-				const truncatedStats = truncateToWidth(stats, width, "");
+				const truncatedStats = truncateToWidth(secondLine.trimEnd(), width, "");
 				const contextPercent = /(\d+(?:\.\d+)?)%(?=\/\S)/u.exec(truncatedStats);
 				if (contextPercent?.index !== undefined) {
 					const percentage = contextPercent[0];

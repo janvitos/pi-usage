@@ -165,7 +165,7 @@ After the active runtime credential changes, the next command, turn, or lifecycl
 The `usage` status item is active only for the selected model provider.
 It refreshes asynchronously at session start, when the session tree or model changes, at the start of a new turn, after Fast-mode changes, and after explicit `/usage` actions. It does not run an idle timer, so leaving Pi unattended does not cause background status redraws; the five-minute cache still bounds ordinary non-forced queries. The status is cleared when the model changes to an unsupported provider.
 
-Usage status text is rendered with Pi’s footer `dim` theme color. Manual another-provider and all-provider queries never publish to the statusline.
+Usage status text is rendered with Pi’s footer `dim` theme color. The footer preserves Pi’s model name and thinking level alongside session statistics, with usage on a dedicated line. Manual another-provider and all-provider queries never publish to the statusline.
 `@narumitw/pi-statusline` supplies the default `📊` icon; `pi-usage` publishes text-only values.
 
 ## 🔄 Migrating from pi-codex-usage
