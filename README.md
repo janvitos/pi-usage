@@ -9,6 +9,7 @@ The extension reports each provider's native semantics instead of presenting unl
 ## ✨ Features
 
 - Shows current-account usage and next actions through `/usage`.
+- Recognizes OpenAI Sign in with ChatGPT accounts and links to their subscription-sharing usage page.
 - Supports OpenAI Codex subscription windows, credits, resets, and model-specific buckets.
 - Supports GitHub Copilot allowances and OpenRouter per-key limits and spend windows.
 - Toggles persistent Codex Fast routing through `/fast` or the contextual usage menu.
@@ -98,6 +99,21 @@ Unknown JSON fields are preserved, writes use a private temporary file plus rena
 Repair or remove an invalid file, then run `/reload` before trying the toggle again.
 
 ## 📋 Provider semantics
+
+### OpenAI (Sign in with ChatGPT)
+
+- Provider ID: `openai`
+- Requires Pi's Sign in with ChatGPT OAuth login with `chatgpt.tokens.use.direct`; API-key billing is not supported.
+- Semantics: ChatGPT subscription sharing, distinct from Codex subscription windows.
+- `/usage` links to https://chatgpt.com/settings/usage for usage and app-access management.
+- No usage statusline is shown until numerical quota data is available; the usage-page link remains in `/usage`.
+
+OpenAI does not document a numerical subscription-sharing usage endpoint for this OAuth flow.
+The extension therefore makes no account-usage HTTP request for this provider and does not invent remaining percentages or reset times.
+Plus shares a five-hour allowance across connected apps; that limit does not apply to Pro.
+The runtime bearer token must match the stored `openai` OAuth login, and custom/proxy origins are rejected.
+It never falls back to a separate `openai-codex` login or sends this token to the Codex usage endpoint.
+See [OpenAI's accounts and sessions documentation](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions).
 
 ### OpenAI Codex
 

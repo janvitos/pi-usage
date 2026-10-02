@@ -1,5 +1,13 @@
 # @janvitos/pi-usage
 
+## 0.52.9
+
+### Patch Changes
+
+- Recognize native `openai` Sign in with ChatGPT OAuth separately from unsupported API-key usage reporting.
+- Link to ChatGPT usage settings without inventing numerical quotas, reset times, or footer usage values.
+- Require matching runtime OAuth credentials and the direct-token scope, reject custom/proxy origins, and keep Codex accounts separate.
+
 ## 0.52.1
 
 ### Patch Changes

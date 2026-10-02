@@ -26,6 +26,28 @@ export const AUTH_FINGERPRINT_SALT = randomBytes(32);
 
 export const SUPPORTED_ADAPTERS: readonly UsageProviderAdapter[] = [
 	{
+		id: "openai",
+		displayName: "OpenAI (ChatGPT subscription)",
+		semantics: { kind: "consumer-subscription", label: "ChatGPT subscription sharing" },
+		async query() {
+			return {
+				providerId: "openai",
+				providerName: "OpenAI (ChatGPT subscription)",
+				capturedAt: Date.now(),
+				source: "openai-chatgpt-pi-auth",
+				semantics: { kind: "consumer-subscription", label: "ChatGPT subscription sharing" },
+				buckets: [],
+				metrics: [],
+				notes: [
+					"Numerical subscription-sharing usage is not available through a documented API.",
+					"View usage and app access: https://chatgpt.com/settings/usage",
+					"Plus shares a five-hour limit across connected apps; this limit does not apply to Pro.",
+					"Codex subscription windows are separate and are not queried with this login.",
+				],
+			};
+		},
+	},
+	{
 		id: "openai-codex",
 		displayName: "OpenAI Codex",
 		semantics: {
@@ -148,6 +170,19 @@ export async function resolveUsageAuth(
 	}
 	const authorization = authorizationFrom(auth);
 	if (!authorization) return undefined;
+	if (adapter.id === "openai") {
+		const credential = asObject(credentialReader("openai"));
+		if (
+			credential?.type !== "oauth" ||
+			credential.access !== bearerToken(authorization) ||
+			!Array.isArray(credential.scopes) ||
+			!credential.scopes.includes("chatgpt.tokens.use.direct")
+		) {
+			throw new Error(
+				"OpenAI subscription usage requires the current matching Sign in with ChatGPT OAuth login; API-key billing is not supported.",
+			);
+		}
+	}
 	const headers = { Authorization: authorization };
 	const secrets = [auth.apiKey, headerValue(auth.headers, "Authorization"), authorization].filter(
 		(value): value is string => Boolean(value),
@@ -408,6 +443,7 @@ function hasOfficialOrigin(model: PiModel, providerId: string): boolean {
 function hasOfficialUrlOrigin(value: string, providerId: string): boolean {
 	try {
 		const url = new URL(value);
+		if (providerId === "openai") return url.origin === "https://api.openai.com";
 		if (providerId === "openai-codex") return url.origin === "https://chatgpt.com";
 		if (providerId === "openrouter") return url.origin === "https://openrouter.ai";
 		if (providerId === "opencode-go") return url.origin === "https://opencode.ai";
