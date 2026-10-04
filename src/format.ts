@@ -32,6 +32,7 @@ export function formatUsageReport(report: UsageReport, displayState: UsageDispla
 	else if (report.providerId === "github-copilot") formatGitHubCopilotReport(lines, report);
 	else if (report.providerId === "openrouter") formatOpenRouterReport(lines, report);
 	else if (report.providerId === "opencode-go") formatOpenCodeZenReport(lines, report);
+	else if (report.providerId === "anthropic") formatClaudeReport(lines, report);
 	else formatGenericReport(lines, report);
 
 	if (report.notes) {
@@ -54,23 +55,23 @@ export function formatUsageStatusline(
 		if (typeof total?.value === "number") return `${formatUsd(total.value)} used`;
 	}
 	if (report.providerId === "opencode-go") return formatOpenCodeZenStatusline(report);
+	if (report.providerId === "anthropic") return formatClaudeStatusline(report);
 	return undefined;
 }
 
 export function styleUsageStatusline(
 	value: string,
-	report: UsageReport,
+	_report: UsageReport,
 	styler: UsageStatusStyler,
 ): string {
 	const percentagePattern = /(\d+(?:\.\d+)?)%/gu;
-	const isUsedPercentage = report.providerId === "opencode-go";
 	let cursor = 0;
 	let styled = "";
 	for (const match of value.matchAll(percentagePattern)) {
 		const index = match.index ?? 0;
 		const numeric = Number(match[1]);
-		const remaining = isUsedPercentage ? 100 - numeric : numeric;
-		const color = usageStatusColor(remaining);
+		// Every statusline percentage is consumption, matching Pi's context percentage.
+		const color = usageStatusColor(100 - numeric);
 		styled += styler.dim(value.slice(cursor, index));
 		styled += styler.color(color, match[0]);
 		cursor = index + match[0].length;
@@ -127,10 +128,10 @@ function formatGitHubCopilotReport(lines: string[], report: UsageReport): void {
 		lines.push(`${`${quota?.label ?? "Copilot quota"}:`.padEnd(VALUE_COLUMN)}unlimited`);
 		return;
 	}
-	const percent = percentRemaining(quota);
+	const percent = percentUsed(quota);
 	const reset = quota.resetsAt ? ` (resets ${formatReset(quota.resetsAt)})` : "";
 	lines.push(
-		`${`${quota.label}:`.padEnd(VALUE_COLUMN)}${quota.remaining} of ${quota.limit} left · ${percent}%${reset}`,
+		`${`${quota.label}:`.padEnd(VALUE_COLUMN)}${quotaUsed(quota)} of ${quota.limit} used · ${percent}%${reset}`,
 	);
 	const overage = report.metrics.find((metric) => metric.id === "overage-used");
 	if (typeof overage?.value === "number" && overage.value > 0) {
@@ -147,7 +148,7 @@ function formatGitHubCopilotStatusline(report: UsageReport): string {
 	const overage = report.metrics.find((metric) => metric.id === "overage-used");
 	const overageSuffix =
 		typeof overage?.value === "number" && overage.value > 0 ? ` +${overage.value} over` : "";
-	return `${kind === "premium" ? "" : `${kind} `}${quota.remaining}/${quota.limit} ${percentRemaining(quota)}%${overageSuffix}`;
+	return `${kind === "premium" ? "" : `${kind} `}${quotaUsed(quota)}/${quota.limit} ${percentUsed(quota)}%${overageSuffix}`;
 }
 
 function findGitHubCopilotQuota(report: UsageReport): UsageBucket | undefined {
@@ -162,9 +163,16 @@ function compactGitHubCopilotQuotaKind(bucket: UsageBucket | undefined): string 
 	return "premium";
 }
 
-function percentRemaining(bucket: UsageBucket): number {
-	if (!bucket.limit || bucket.remaining === undefined) return 0;
-	return Math.round(clampPercent((bucket.remaining / bucket.limit) * 100));
+// Capped at the allowance; usage beyond it is reported separately as overage.
+function quotaUsed(bucket: UsageBucket): number {
+	const limit = bucket.limit ?? 0;
+	const used = bucket.used ?? limit - (bucket.remaining ?? 0);
+	return Math.min(limit, Math.max(0, used));
+}
+
+function percentUsed(bucket: UsageBucket): number {
+	if (!bucket.limit) return 0;
+	return Math.round(clampPercent((quotaUsed(bucket) / bucket.limit) * 100));
 }
 
 function formatOpenRouterReport(lines: string[], report: UsageReport): void {
@@ -202,6 +210,31 @@ function formatOpenCodeZenStatusline(report: UsageReport): string | undefined {
 	return parts.length > 0 ? parts.join(" ") : undefined;
 }
 
+function formatClaudeReport(lines: string[], report: UsageReport): void {
+	for (const bucket of report.buckets) {
+		lines.push(`${`${bucket.label}:`.padEnd(VALUE_COLUMN)}${formatPercentBucket(bucket)}`);
+	}
+}
+
+// Session and all-model weekly windows only; model-scoped weekly limits stay in /usage.
+function formatClaudeStatusline(report: UsageReport): string | undefined {
+	const parts: string[] = [];
+	for (const bucket of report.buckets) {
+		const compact =
+			bucket.id === "five_hour"
+				? "5h"
+				: bucket.label === "Session"
+					? "session"
+					: bucket.id === "seven_day" || bucket.label === "Weekly"
+						? "wk"
+						: undefined;
+		const used = usedPercent(bucket);
+		if (!compact || used === undefined) continue;
+		parts.push(`${used.toFixed(0)}% (${compact})`);
+	}
+	return parts.length > 0 ? parts.join(" ") : undefined;
+}
+
 function formatGenericReport(lines: string[], report: UsageReport): void {
 	for (const bucket of report.buckets) {
 		lines.push(
@@ -225,11 +258,10 @@ function formatCodexStatusline(
 	const buckets = report.buckets.filter((bucket) => (bucket.groupId ?? bucket.id) === group);
 	const parts: string[] = [];
 	for (const bucket of buckets) {
-		if (bucket.remaining === undefined) continue;
+		const used = usedPercent(bucket);
+		if (used === undefined) continue;
 		const fallback = bucket.id.endsWith(":secondary") ? "weekly" : "5h";
-		parts.push(
-			`${clampPercent(bucket.remaining).toFixed(0)}% (${formatResetCountdown(bucket, fallback, now)})`,
-		);
+		parts.push(`${used.toFixed(0)}% (${formatResetCountdown(bucket, fallback, now)})`);
 	}
 	return parts.length > 0 ? parts.join(" ") : formatCodexCreditsStatus(report);
 }
@@ -304,10 +336,16 @@ function normalizedKeyHasToken(key: string, token: string): boolean {
 }
 
 function formatPercentBucket(bucket: UsageBucket): string {
-	const remaining = clampPercent(bucket.remaining ?? 0);
-	const filled = Math.round((remaining / 100) * BAR_SEGMENTS);
+	const used = usedPercent(bucket) ?? 0;
+	const filled = Math.round((used / 100) * BAR_SEGMENTS);
 	const reset = bucket.resetsAt ? ` (resets ${formatReset(bucket.resetsAt)})` : "";
-	return `[${"█".repeat(filled)}${"░".repeat(BAR_SEGMENTS - filled)}] ${remaining.toFixed(0)}% left${reset}`;
+	return `[${"█".repeat(filled)}${"░".repeat(BAR_SEGMENTS - filled)}] ${used.toFixed(0)}% used${reset}`;
+}
+
+function usedPercent(bucket: UsageBucket): number | undefined {
+	if (bucket.used !== undefined) return clampPercent(bucket.used);
+	if (bucket.remaining === undefined) return undefined;
+	return clampPercent(100 - bucket.remaining);
 }
 
 function formatWindowLabel(

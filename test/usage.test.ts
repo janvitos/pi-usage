@@ -213,7 +213,7 @@ test("current Codex usage can redeem a selected reset and refresh account state"
 	});
 	assert.equal(new Headers(consume.init?.headers).get("chatgpt-account-id"), "account-123");
 	assert.ok(usageRequests >= 2);
-	assert.equal(statuses.get("usage"), "100% (5h)");
+	assert.equal(statuses.get("usage"), "0% (5h)");
 	assert.match(titles.at(-1) ?? "", /Usage reset.*0 usage limit resets left/isu);
 });
 
@@ -388,10 +388,10 @@ test("unsupported providers remain visible without publishing an error status", 
 	const command = mock.commands.get("usage");
 	assert.ok(command);
 	const unsupportedModel = {
-		id: "claude",
-		name: "Claude",
-		provider: "anthropic",
-		baseUrl: "https://api.anthropic.com",
+		id: "gemini",
+		name: "Gemini",
+		provider: "google",
+		baseUrl: "https://generativelanguage.googleapis.com",
 	};
 	let title = "";
 	const { ctx, statuses } = createMockContext({
@@ -403,7 +403,7 @@ test("unsupported providers remain visible without publishing an error status", 
 			return "Close";
 		},
 		modelRegistry: {
-			getProviderDisplayName: () => "Anthropic",
+			getProviderDisplayName: () => "Google",
 			getAvailable: () => [],
 			getAll: () => [],
 		},
@@ -771,7 +771,7 @@ test("agent settled forces a fresh query while preserving successful status on f
 	mock.events.get("session_start")?.[0]?.({}, harness.ctx);
 	await settle();
 	const successfulStatus = harness.statuses.get("usage");
-	assert.match(successfulStatus ?? "", /80%/u);
+	assert.match(successfulStatus ?? "", /20%/u);
 	assert.equal(fetches, 1);
 
 	mock.events.get("turn_start")?.[0]?.({}, harness.ctx);
@@ -1008,11 +1008,11 @@ test("a slow command cannot overwrite status after the selected model changes", 
 	Object.assign(ctx, { model: codexModel });
 	mock.events.get("model_select")?.[0]?.({ model: codexModel }, ctx);
 	await settle();
-	assert.equal(statuses.get("usage"), "80% (5h)");
+	assert.equal(statuses.get("usage"), "20% (5h)");
 
 	resolveSlowFetch(await usageFetch("https://openrouter.ai/api/v1/key"));
 	await commandPromise;
-	assert.equal(statuses.get("usage"), "80% (5h)");
+	assert.equal(statuses.get("usage"), "20% (5h)");
 });
 
 test("statusline follows runtime auth changes and clears for unsupported selected providers", async (t) => {

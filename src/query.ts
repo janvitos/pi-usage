@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { type ExtensionContext, readStoredCredential } from "@earendil-works/pi-coding-agent";
 import { errorMessage, fingerprintResolvedAuth, redactUsageError } from "./core.js";
+import { normalizeAnthropicUsagePayload } from "./providers/anthropic.js";
 import { normalizeCodexBackendPayload } from "./providers/codex.js";
 import { normalizeGitHubCopilotUsagePayload } from "./providers/github-copilot.js";
 import { normalizeOpenCodeZenPayload } from "./providers/opencode-zen.js";
@@ -25,6 +26,21 @@ const MAX_ERROR_BODY_BYTES = 4 * 1024;
 export const AUTH_FINGERPRINT_SALT = randomBytes(32);
 
 export const SUPPORTED_ADAPTERS: readonly UsageProviderAdapter[] = [
+	{
+		id: "anthropic",
+		displayName: "Claude",
+		semantics: { kind: "consumer-subscription", label: "Claude subscription limits" },
+		async query(auth, signal, timeoutMs) {
+			const payload = await fetchProviderJson(
+				"https://api.anthropic.com/api/oauth/usage",
+				auth,
+				signal,
+				timeoutMs,
+				"Claude usage endpoint",
+			);
+			return normalizeAnthropicUsagePayload(payload, Date.now());
+		},
+	},
 	{
 		id: "openai",
 		displayName: "OpenAI (ChatGPT subscription)",
@@ -115,10 +131,18 @@ export const SUPPORTED_ADAPTERS: readonly UsageProviderAdapter[] = [
 	},
 ];
 
+// claude-bridge runs Claude Code with Pi's resolved Anthropic credential, so its usage is the Anthropic account's.
+const USAGE_PROVIDER_ALIASES: Readonly<Record<string, string>> = { "claude-bridge": "anthropic" };
+
+export function usageProviderId(providerId: string | undefined): string | undefined {
+	return providerId === undefined ? undefined : (USAGE_PROVIDER_ALIASES[providerId] ?? providerId);
+}
+
 export function adapterForProvider(
 	providerId: string | undefined,
 ): UsageProviderAdapter | undefined {
-	return SUPPORTED_ADAPTERS.find((adapter) => adapter.id === providerId);
+	const id = usageProviderId(providerId);
+	return SUPPORTED_ADAPTERS.find((adapter) => adapter.id === id);
 }
 
 export function isStaleExtensionContextError(error: unknown): boolean {
@@ -183,7 +207,16 @@ export async function resolveUsageAuth(
 			);
 		}
 	}
-	const headers = { Authorization: authorization };
+	if (adapter.id === "anthropic") {
+		const credential = asObject(credentialReader("anthropic"));
+		if (credential?.type !== "oauth" || credential.access !== bearerToken(authorization)) {
+			throw new Error(
+				"Claude subscription usage requires the current matching Pi Anthropic OAuth login; API-key billing is not supported.",
+			);
+		}
+	}
+	const headers: Record<string, string> = { Authorization: authorization };
+	if (adapter.id === "anthropic") headers["anthropic-beta"] = "oauth-2025-04-20";
 	const secrets = [auth.apiKey, headerValue(auth.headers, "Authorization"), authorization].filter(
 		(value): value is string => Boolean(value),
 	);
@@ -443,6 +476,7 @@ function hasOfficialOrigin(model: PiModel, providerId: string): boolean {
 function hasOfficialUrlOrigin(value: string, providerId: string): boolean {
 	try {
 		const url = new URL(value);
+		if (providerId === "anthropic") return url.origin === "https://api.anthropic.com";
 		if (providerId === "openai") return url.origin === "https://api.openai.com";
 		if (providerId === "openai-codex") return url.origin === "https://chatgpt.com";
 		if (providerId === "openrouter") return url.origin === "https://openrouter.ai";

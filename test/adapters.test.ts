@@ -9,7 +9,7 @@ import {
 	styleUsageStatusline,
 } from "../src/index.js";
 
-test("usage percentage styling uses 70/30 remaining-quota thresholds", () => {
+test("usage percentage styling colours used quota by 30/70 thresholds", () => {
 	const report = normalizeCodexBackendPayload(
 		{
 			rate_limit: {
@@ -24,7 +24,7 @@ test("usage percentage styling uses 70/30 remaining-quota thresholds", () => {
 	});
 	assert.equal(
 		styled,
-		"<dim></dim><success>80%</success><dim> (5h) </dim><warning>40%</warning><dim> (wk) </dim><error>10%</error><dim> (m)</dim>",
+		"<dim></dim><error>80%</error><dim> (5h) </dim><warning>40%</warning><dim> (wk) </dim><success>10%</success><dim> (m)</dim>",
 	);
 });
 
@@ -63,8 +63,8 @@ test("GitHub Copilot adapter normalizes legacy premium request quota", () => {
 		period: "monthly",
 		resetsAt: 1_785_542_400,
 	});
-	assert.match(formatUsageReport(report, "current"), /245 of 300 left · 82%/);
-	assert.equal(formatUsageStatusline(report), "245/300 82%");
+	assert.match(formatUsageReport(report, "current"), /55 of 300 used · 18%/);
+	assert.equal(formatUsageStatusline(report), "55/300 18%");
 });
 
 test("GitHub Copilot adapter preserves AI-credit billing semantics", () => {
@@ -98,8 +98,8 @@ test("GitHub Copilot adapter preserves AI-credit billing semantics", () => {
 		period: "monthly",
 		resetsAt: 1_785_542_400,
 	});
-	assert.match(formatUsageReport(report, "current"), /AI credits:\s+1200 of 1500 left · 80%/);
-	assert.equal(formatUsageStatusline(report), "credits 1200/1500 80%");
+	assert.match(formatUsageReport(report, "current"), /AI credits:\s+300 of 1500 used · 20%/);
+	assert.equal(formatUsageStatusline(report), "credits 300/1500 20%");
 });
 
 test("GitHub Copilot adapter represents overage without rejecting negative remaining quota", () => {
@@ -125,7 +125,7 @@ test("GitHub Copilot adapter represents overage without rejecting negative remai
 		{ id: "overage-used", label: "Additional usage", value: 100, unit: "count" },
 	]);
 	assert.match(formatUsageReport(report, "current"), /Additional usage:\s+100 AI credits/);
-	assert.equal(formatUsageStatusline(report), "credits 0/1500 0% +100 over");
+	assert.equal(formatUsageStatusline(report), "credits 1500/1500 100% +100 over");
 });
 
 test("GitHub Copilot adapter normalizes the free-tier quota shape", () => {
@@ -153,8 +153,8 @@ test("GitHub Copilot adapter normalizes the free-tier quota shape", () => {
 		period: "monthly",
 		resetsAt: 1_785_542_400,
 	});
-	assert.match(formatUsageReport(report, "current"), /Chat requests:\s+40 of 50 left · 80%/);
-	assert.equal(formatUsageStatusline(report), "chat 40/50 80%");
+	assert.match(formatUsageReport(report, "current"), /Chat requests:\s+10 of 50 used · 20%/);
+	assert.equal(formatUsageStatusline(report), "chat 10/50 20%");
 });
 
 test("GitHub Copilot adapter handles unlimited quota and rejects incomplete responses", () => {
@@ -191,7 +191,7 @@ test("GitHub Copilot adapter handles unlimited quota and rejects incomplete resp
 		675,
 	);
 	assert.equal(derivedOverage.metrics[0]?.value, 20);
-	assert.equal(formatUsageStatusline(derivedOverage), "0/300 0% +20 over");
+	assert.equal(formatUsageStatusline(derivedOverage), "300/300 100% +20 over");
 
 	assert.throws(() => normalizeGitHubCopilotUsagePayload({}, 0), /supported quota/iu);
 	assert.throws(
@@ -339,7 +339,7 @@ test("Codex status formats reset timestamps as a remaining-time countdown", () =
 			},
 			now,
 		),
-		"70% (3d 7h 42m)",
+		"30% (3d 7h 42m)",
 	);
 });
 
@@ -400,14 +400,14 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 			name: "GPT-5.3 Codex Spark",
 			provider: "openai-codex",
 		}),
-		"90% (5h)",
+		"10% (5h)",
 	);
 	const codexModel = {
 		id: "gpt-5.3-codex",
 		name: "GPT-5.3 Codex",
 		provider: "openai-codex",
 	};
-	assert.equal(formatUsageStatusline(report, codexModel), "40% (5h) 20% (wk)");
+	assert.equal(formatUsageStatusline(report, codexModel), "60% (5h) 80% (wk)");
 	const primary = report.buckets.find((bucket) => bucket.id === "codex:primary");
 	const secondary = report.buckets.find((bucket) => bucket.id === "codex:secondary");
 	assert.ok(primary);
@@ -415,9 +415,9 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 	const now = 1_800_000_000_000;
 	primary.resetsAt = (now + (4 * 60 + 12) * 60_000) / 1000;
 	secondary.resetsAt = (now + ((3 * 24 + 7) * 60 + 42) * 60_000) / 1000;
-	assert.equal(formatUsageStatusline(report, codexModel, now), "40% (0d 4h 12m) 20% (3d 7h 42m)");
+	assert.equal(formatUsageStatusline(report, codexModel, now), "60% (0d 4h 12m) 80% (3d 7h 42m)");
 	primary.resetsAt = (now - 1) / 1000;
-	assert.equal(formatUsageStatusline(report, codexModel, now), "40% (reset due) 20% (3d 7h 42m)");
+	assert.equal(formatUsageStatusline(report, codexModel, now), "60% (reset due) 80% (3d 7h 42m)");
 
 	const sparkBucket = report.buckets.find((bucket) => bucket.groupId === "gpt-5.3-codex-spark");
 	assert.ok(sparkBucket);
@@ -428,6 +428,6 @@ test("Codex adapter preserves windows, credits, and model-specific statusline bu
 			name: "-".repeat(100_000),
 			provider: "openai-codex",
 		}),
-		"90% (5h)",
+		"10% (5h)",
 	);
 });

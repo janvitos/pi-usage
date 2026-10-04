@@ -33,6 +33,7 @@ import {
 	isStaleExtensionContextError,
 	queryProviderUsage,
 	resolveUsageAuth,
+	usageProviderId,
 } from "./query.js";
 import { createUsageSettingsRuntime, type UsageSettingsRuntime } from "./settings.js";
 import type {
@@ -587,7 +588,7 @@ export default function usageExtension(
 						kind: "actions",
 						title: "Select a configured provider",
 						items: configuredAdapters(ctx)
-							.filter((adapter) => adapter.id !== ctx.model?.provider)
+							.filter((adapter) => adapter.id !== usageProviderId(ctx.model?.provider))
 							.map((adapter) => ({
 								id: adapter.id,
 								label: adapter.displayName,
@@ -834,7 +835,7 @@ export default function usageExtension(
 					},
 					another: async () => {
 						const others = configuredAdapters(ctx).filter(
-							(adapter) => adapter.id !== ctx.model?.provider,
+							(adapter) => adapter.id !== usageProviderId(ctx.model?.provider),
 						);
 						if (others.length === 0) {
 							ctx.ui.notify("No other supported provider has configured runtime auth.", "info");
@@ -844,7 +845,8 @@ export default function usageExtension(
 					},
 					provider: async ({ itemId }) => {
 						const adapter = configuredAdapters(ctx).find(
-							(candidate) => candidate.id === itemId && candidate.id !== ctx.model?.provider,
+							(candidate) =>
+								candidate.id === itemId && candidate.id !== usageProviderId(ctx.model?.provider),
 						);
 						if (!adapter) return { kind: "back" };
 						const outcome = await runMenuOperation(
@@ -872,7 +874,7 @@ export default function usageExtension(
 					},
 					all: async () => {
 						const adapters = configuredAdapters(ctx);
-						const currentProviderId = ctx.model?.provider;
+						const currentProviderId = usageProviderId(ctx.model?.provider);
 						const settled = await runMenuOperation(
 							ctx,
 							"Checking configured provider usage…",

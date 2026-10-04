@@ -1,5 +1,12 @@
 # @janvitos/pi-usage
 
+## 0.53.0
+
+### Minor Changes
+
+- Add Claude subscription usage (session, weekly, and model-scoped windows with reset times) for Pi's Anthropic OAuth login, including `claude-bridge` models from `pi-claude-agent-sdk`. Uses an undocumented Anthropic endpoint; API keys, mismatched credentials, and custom/proxy origins are rejected.
+- **Breaking display change:** quota percentages now show usage **used** instead of remaining, for Codex, GitHub Copilot, and Claude, so they rise toward 100% like Pi's context percentage. Statusline colours are inverted to match (green when low). OpenCode Go already showed used; OpenRouter dollar balances are unchanged.
+
 ## 0.52.9
 
 ### Patch Changes

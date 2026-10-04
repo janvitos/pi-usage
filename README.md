@@ -89,7 +89,7 @@ The extension reloads this file at every session start and does not create it un
 
 Fast currently applies only to official `openai-codex-responses` requests for `gpt-5.4`, `gpt-5.5`, `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` at `https://chatgpt.com`.
 It sends `service_tier: "priority"` while enabled and explicit `service_tier: "default"` otherwise.
-The statusline adds `fast` only while the preference is effective, for example `codex fast 59% 5h`.
+The statusline adds `fast` only while the preference is effective, for example `codex fast 41% 5h`.
 Unsupported models and custom or proxy origins are left unchanged.
 
 `/fast` supports TUI and RPC mode, accepts no arguments, and rejects print or JSON mode before mutation.
@@ -122,7 +122,7 @@ See [OpenAI's accounts and sessions documentation](https://developers.openai.com
 - Source: the Codex usage and earned-reset endpoints using Pi's resolved runtime authorization
 - Displayed data: returned duration-based windows, resets, credits, earned usage-limit resets, and additional model buckets
 - Reset mutation: `POST /wham/rate-limit-reset-credits/consume` with a unique redemption request ID and, when available, the selected opaque credit ID
-- Statusline examples: `codex 59% 5h 61% wk`, `codex fast 59% 5h`, or `codex spark 100% 5h`
+- Statusline examples: `codex 41% 5h 39% wk`, `codex fast 41% 5h`, or `codex spark 0% 5h`
 
 The statusline selects a returned bucket that matches the current Codex model when one is available.
 Unlike `pi-codex-usage`, this successor intentionally has no Codex CLI fallback because the CLI may be logged into a different account than Pi's active runtime account.
@@ -138,8 +138,8 @@ Opaque credit and account IDs are never shown or persisted by the extension.
 - Provider ID: `github-copilot`
 - Semantics: the allowance reported for the active Copilot plan—AI credits for current usage-based billing, premium requests for legacy annual billing, or chat requests for Copilot Free's limited response shape
 - Source: GitHub's undocumented `GET /copilot_internal/user` endpoint
-- Displayed data: entitlement, remaining allowance, percentage, reset time, plan, and any additional usage beyond the included allowance
-- Statusline examples: `copilot credits 1200/1500 80%`, `copilot 245/300 82%`, or `copilot chat 40/50 80%`
+- Displayed data: entitlement, used allowance, percentage used, reset time, plan, and any additional usage beyond the included allowance
+- Statusline examples: `copilot credits 300/1500 20%`, `copilot 55/300 18%`, or `copilot chat 10/50 20%`
 
 GitHub's quota endpoint requires the original GitHub OAuth token rather than the short-lived Copilot inference token exposed by runtime auth.
 `pi-usage` therefore supports Copilot accounts created through Pi's `/login` flow, reads that stored credential through Pi's public API, and uses it only when its short-lived access token matches the active runtime credential.
@@ -178,11 +178,21 @@ After the active runtime credential changes, the next command, turn, or lifecycl
 
 ## 📊 Statusline behavior
 
+Quota percentages show how much of each allowance is **used**, rising toward 100% like Pi's context percentage; colours go from green (under 30% used) through yellow to red (70% or more). Dollar balances such as OpenRouter's keep their `left`/`used` wording.
+
 The `usage` status item is active only for the selected model provider.
 It refreshes asynchronously at session start, when the session tree or model changes, at the start of a new turn, after Fast-mode changes, and after explicit `/usage` actions. It does not run an idle timer, so leaving Pi unattended does not cause background status redraws; the five-minute cache still bounds ordinary non-forced queries. The status is cleared when the model changes to an unsupported provider.
 
 Usage status text is rendered with Pi’s footer `dim` theme color. The footer preserves Pi’s model name and thinking level alongside session statistics, with usage on a dedicated line. Manual another-provider and all-provider queries never publish to the statusline.
 `@narumitw/pi-statusline` supplies the default `📊` icon; `pi-usage` publishes text-only values.
+
+## Claude subscription usage
+
+Anthropic accounts signed in through Pi's `/login` support Claude subscription usage in `/usage` and the statusline: five-hour, weekly, and available Sonnet/Opus or OAuth-app windows, including reset times. Percentages show how much of each allowance is used, matching Claude's own usage page; they are not token counts. Statusline example: `34% (session) 65% (wk)`.
+
+Models from the `claude-bridge` provider (`pi-claude-agent-sdk`) report the same usage, because the bridge runs Claude Code with Pi's resolved Anthropic credential.
+
+Queries use `https://api.anthropic.com/api/oauth/usage`, an undocumented endpoint that may change. Only Pi's matching active Anthropic OAuth credential is accepted; API-key billing, extra-usage spending, separate Claude Code credentials, and custom/proxy origins are not supported. Existing caching and query error handling apply.
 
 ## 🔄 Migrating from pi-codex-usage
 
