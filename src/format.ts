@@ -55,7 +55,7 @@ export function formatUsageStatusline(
 		if (typeof total?.value === "number") return `${formatUsd(total.value)} used`;
 	}
 	if (report.providerId === "opencode-go") return formatOpenCodeZenStatusline(report);
-	if (report.providerId === "anthropic") return formatClaudeStatusline(report);
+	if (report.providerId === "anthropic") return formatClaudeStatusline(report, now);
 	return undefined;
 }
 
@@ -217,20 +217,20 @@ function formatClaudeReport(lines: string[], report: UsageReport): void {
 }
 
 // Session and all-model weekly windows only; model-scoped weekly limits stay in /usage.
-function formatClaudeStatusline(report: UsageReport): string | undefined {
+function formatClaudeStatusline(report: UsageReport, now: number): string | undefined {
 	const parts: string[] = [];
 	for (const bucket of report.buckets) {
 		const compact =
-			bucket.id === "five_hour"
-				? "5h"
-				: bucket.label === "Session"
-					? "session"
-					: bucket.id === "seven_day" || bucket.label === "Weekly"
-						? "wk"
-						: undefined;
+			bucket.label === "Five-hour" ? "5h" : bucket.label === "Weekly" ? "wk" : undefined;
 		const used = usedPercent(bucket);
 		if (!compact || used === undefined) continue;
-		parts.push(`${used.toFixed(0)}% (${compact})`);
+		const reset =
+			bucket.resetsAt !== undefined && Number.isFinite(bucket.resetsAt)
+				? compact === "5h"
+					? ` (${formatHourResetCountdown(bucket.resetsAt, now)})`
+					: ` (${formatResetCountdown(bucket, "weekly", now)})`
+				: "";
+		parts.push(`${used.toFixed(0)}% (${compact})${reset}`);
 	}
 	return parts.length > 0 ? parts.join(" ") : undefined;
 }
@@ -377,6 +377,13 @@ function formatResetCountdown(bucket: UsageBucket, fallback: "5h" | "weekly", no
 	const hours = Math.floor((totalMinutes % 1_440) / 60);
 	const minutes = totalMinutes % 60;
 	return `${days}d ${hours}h ${minutes}m`;
+}
+
+function formatHourResetCountdown(resetsAt: number, now: number): string {
+	const remainingMs = resetsAt * 1000 - now;
+	if (remainingMs <= 0) return "reset due";
+	const totalMinutes = Math.floor(remainingMs / 60_000);
+	return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
 }
 
 function formatMetricValue(value: number | string, unit: UsageBucket["unit"] | undefined): string {

@@ -1,5 +1,12 @@
 # @janvitos/pi-usage
 
+## 0.53.1
+
+### Patch Changes
+
+- Add Claude statusline reset countdowns to the right of each usage window: hours and minutes for the five-hour limit, and days, hours, and minutes for the weekly limit.
+- Unify Claude session and five-hour usage labels as `5h` in the statusline and `Five-hour` in `/usage`.
+
 ## 0.53.0
 
 ### Minor Changes

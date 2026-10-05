@@ -1,6 +1,6 @@
 {
 	"name": "@janvitos/pi-usage",
-	"version": "0.53.0",
+	"version": "0.53.1",
 	"description": "Pi extension that shows current-account usage for Claude, Codex, GitHub Copilot, OpenRouter, and OpenCode Zen.",
 	"type": "module",
 	"license": "MIT",

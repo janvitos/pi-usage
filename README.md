@@ -188,7 +188,7 @@ Usage status text is rendered with Pi’s footer `dim` theme color. The footer p
 
 ## Claude subscription usage
 
-Anthropic accounts signed in through Pi's `/login` support Claude subscription usage in `/usage` and the statusline: five-hour, weekly, and available Sonnet/Opus or OAuth-app windows, including reset times. Percentages show how much of each allowance is used, matching Claude's own usage page; they are not token counts. Statusline example: `34% (session) 65% (wk)`.
+Anthropic accounts signed in through Pi's `/login` support Claude subscription usage in `/usage` and the statusline: five-hour, weekly, and available Sonnet/Opus or OAuth-app windows, including reset times. Percentages show how much of each allowance is used, matching Claude's own usage page; they are not token counts. Statusline example: `34% (5h) (4h 12m) 65% (wk) (3d 7h 42m)`. Claude's session limit is its rolling five-hour window, so it is always labeled `5h`. Reset countdowns appear to the right of each window label when a reset timestamp is available: hours and minutes for the five-hour window, days, hours, and minutes for the weekly window.
 
 Models from the `claude-bridge` provider (`pi-claude-agent-sdk`) report the same usage, because the bridge runs Claude Code with Pi's resolved Anthropic credential.
 

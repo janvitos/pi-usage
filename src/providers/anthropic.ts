@@ -45,9 +45,10 @@ export function normalizeAnthropicUsagePayload(
 				typeof scope?.model?.display_name === "string"
 					? sanitizeDisplayText(scope.model.display_name, 80)
 					: "Scoped";
+			// Claude's session limit is its rolling five-hour window; label it like the legacy five_hour field.
 			const label =
 				limit.kind === "session"
-					? "Session"
+					? "Five-hour"
 					: limit.kind === "weekly_all"
 						? "Weekly"
 						: `Weekly ${name}`;
@@ -59,7 +60,7 @@ export function normalizeAnthropicUsagePayload(
 				remaining: Math.max(0, 100 - used),
 				limit: 100,
 				unit: "percent",
-				...(limit.kind !== "session" ? { windowMinutes: 10080 } : {}),
+				windowMinutes: limit.kind === "session" ? 300 : 10080,
 				...(Number.isFinite(reset) ? { resetsAt: Math.floor(reset / 1000) } : {}),
 			});
 		}

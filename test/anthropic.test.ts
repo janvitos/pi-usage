@@ -144,7 +144,19 @@ test("Claude statusline shows used session and weekly allowance", () => {
 		},
 		1,
 	);
-	assert.equal(formatUsageStatusline(legacy), "25% (5h) 60% (wk)");
+	const now = Date.parse("2026-10-04T19:48:00Z");
+	assert.equal(formatUsageStatusline(legacy, undefined, now), "25% (5h) (4h 12m) 60% (wk)");
+	const weekly = legacy.buckets.find((bucket) => bucket.id === "seven_day");
+	assert.ok(weekly);
+	weekly.resetsAt = (now + ((3 * 24 + 7) * 60 + 42) * 60_000) / 1000;
+	assert.equal(
+		formatUsageStatusline(legacy, undefined, now),
+		"25% (5h) (4h 12m) 60% (wk) (3d 7h 42m)",
+	);
+	assert.equal(
+		formatUsageStatusline(legacy, undefined, Date.parse("2026-10-05T00:00:00Z")),
+		"25% (5h) (reset due) 60% (wk) (3d 3h 30m)",
+	);
 	assert.match(formatUsageReport(legacy, "current"), /Five-hour:.*25% used \(resets /);
 	assert.match(formatUsageReport(legacy, "current"), /Weekly Opus:.*90% used/);
 
@@ -158,6 +170,13 @@ test("Claude statusline shows used session and weekly allowance", () => {
 		},
 		1,
 	);
-	assert.equal(formatUsageStatusline(structured), "10% (session) 30% (wk)");
+	assert.equal(formatUsageStatusline(structured), "10% (5h) 30% (wk)");
+	assert.match(formatUsageReport(structured, "current"), /Five-hour:.*10% used/);
+	const session = structured.buckets[0];
+	assert.ok(session);
+	session.resetsAt = (now + 60_000) / 1000;
+	assert.equal(formatUsageStatusline(structured, undefined, now), "10% (5h) (0h 1m) 30% (wk)");
+	session.resetsAt = NaN;
+	assert.equal(formatUsageStatusline(structured, undefined, now), "10% (5h) 30% (wk)");
 	assert.match(formatUsageReport(structured, "current"), /Weekly Opus:.*50% used/);
 });
