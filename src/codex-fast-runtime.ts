@@ -8,8 +8,10 @@ import {
 	codexFastIsEffective,
 	codexFastStatusLabel,
 	correctCodexFastMessageCost,
+	isOfficialCodexModel,
 	rewriteCodexFastPayload,
 } from "./codex-fast.js";
+import { createCodexFastCatalog } from "./codex-fast-catalog.js";
 import { errorMessage } from "./core.js";
 import { isStaleExtensionContextError } from "./query.js";
 import type { UsageSettingsRuntime, UsageSettingsState } from "./settings.js";
@@ -24,7 +26,24 @@ export function registerCodexFastMode(
 	pi: ExtensionAPI,
 	settingsRuntime: UsageSettingsRuntime,
 	refreshStatus: (ctx: ExtensionContext) => void,
+	loadCatalog = createCodexFastCatalog(),
 ) {
+	let supported: ReadonlySet<string> | undefined;
+	let discoveryGeneration = 0;
+	const discover = async (ctx: ExtensionContext) => {
+		const ownerGeneration = generation;
+		const ownerDiscovery = ++discoveryGeneration;
+		supported = undefined;
+		// Validate the endpoint before resolving or sending credentials.
+		if (!isOfficialCodexModel(ctx.model)) return;
+		const result = await loadCatalog(ctx, sessionController.signal);
+		if (
+			ownerGeneration === generation &&
+			ownerDiscovery === discoveryGeneration &&
+			!sessionController.signal.aborted
+		)
+			supported = result;
+	};
 	let sessionController = new AbortController();
 	let generation = 0;
 	const pendingFastRequests = new Map<string, PendingFastRequest>();
@@ -72,9 +91,11 @@ export function registerCodexFastMode(
 				return;
 			}
 			if (!ctx.hasUI) throw new Error("/fast requires TUI or RPC mode.");
+			await discover(ctx);
 			const availability = codexFastAvailability(
 				ctx.model,
 				settingsRuntime.get().settings.codexFastMode,
+				supported,
 			);
 			if (availability.kind === "not-codex") {
 				ctx.ui.notify("/fast is available only for the active OpenAI Codex model.", "warning");
@@ -99,6 +120,7 @@ export function registerCodexFastMode(
 		generation += 1;
 		sessionController.abort();
 		pendingFastRequests.clear();
+		supported = undefined;
 		sessionController = new AbortController();
 		const ownerGeneration = generation;
 		const sessionId = ctx.sessionManager.getSessionId();
@@ -128,15 +150,20 @@ export function registerCodexFastMode(
 				"warning",
 			);
 		}
+		await discover(ctx);
 		refreshStatus(ctx);
 	});
 
-	pi.on("before_provider_request", (event, ctx) => {
-		const rewritten = rewriteCodexFastPayload(
-			event.payload,
-			ctx.model,
-			settingsRuntime.get().settings.codexFastMode,
-		);
+	pi.on("model_select", async (_event, ctx) => {
+		supported = undefined;
+		await discover(ctx);
+		refreshStatus(ctx);
+	});
+
+	pi.on("before_provider_request", async (event, ctx) => {
+		const enabled = settingsRuntime.get().settings.codexFastMode;
+		await discover(ctx);
+		const rewritten = rewriteCodexFastPayload(event.payload, ctx.model, enabled, supported);
 		const key = activeRequestKey(ctx);
 		if (key && ctx.model) {
 			pendingFastRequests.set(key, {
@@ -164,13 +191,14 @@ export function registerCodexFastMode(
 	});
 
 	return {
+		discover,
 		availability(model: PiModel | undefined) {
-			return codexFastAvailability(model, settingsRuntime.get().settings.codexFastMode);
+			return codexFastAvailability(model, settingsRuntime.get().settings.codexFastMode, supported);
 		},
 		decorateStatus(model: PiModel | undefined, status: string) {
 			return codexFastStatusLabel(
 				status,
-				codexFastIsEffective(model, settingsRuntime.get().settings.codexFastMode),
+				codexFastIsEffective(model, settingsRuntime.get().settings.codexFastMode, supported),
 			);
 		},
 		toggle,

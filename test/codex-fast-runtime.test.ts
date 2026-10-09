@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { correctCodexFastMessageCost } from "../src/codex-fast.js";
-import { registerCodexFastMode } from "../src/codex-fast-runtime.js";
+import { registerCodexFastMode as registerRuntime } from "../src/codex-fast-runtime.js";
+
+const registerCodexFastMode: typeof registerRuntime = (pi, settings, refresh) =>
+	registerRuntime(pi, settings, refresh, async () => new Set(["gpt-5.4", "gpt-6.1-sol"]));
+
 import type { UsageSettingsRuntime, UsageSettingsState } from "../src/settings.js";
 import { createMockContext, createMockPi } from "../test-support.js";
 
@@ -275,6 +279,37 @@ test("an already-correct cost still consumes its request marker", async () => {
 		undefined,
 		"the completed request cannot affect a later assistant message",
 	);
+});
+
+test("newly discovered models can toggle Fast and route priority without a name allowlist", async () => {
+	const memory = memoryRuntime();
+	const mock = createMockPi();
+	registerCodexFastMode(mock.pi, memory.runtime, () => undefined);
+	const current = context({ model: { ...codexModel, id: "gpt-6.1-sol" } });
+	await mock.commands.get("fast")?.handler("", current.ctx);
+	assert.equal(memory.state.settings.codexFastMode, true);
+	assert.deepEqual(
+		await mock.events.get("before_provider_request")?.[0]?.(
+			{ payload: { model: "gpt-6.1-sol" } },
+			current.ctx,
+		),
+		{ model: "gpt-6.1-sol", service_tier: "priority" },
+	);
+});
+
+test("failed discovery reports unverifiable support without mutating preferences", async () => {
+	const memory = memoryRuntime();
+	const mock = createMockPi();
+	registerRuntime(
+		mock.pi,
+		memory.runtime,
+		() => undefined,
+		async () => undefined,
+	);
+	const current = context();
+	await mock.commands.get("fast")?.handler("", current.ctx);
+	assert.match(current.notifications[0]?.message ?? "", /Could not verify/);
+	assert.deepEqual(memory.patches, []);
 });
 
 test("session reload warns for invalid settings, refreshes status, and shutdown flushes", async () => {

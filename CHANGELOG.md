@@ -1,5 +1,13 @@
 # @janvitos/pi-usage
 
+## 0.53.2
+
+### Patch Changes
+
+- Discover Codex Fast support from the authenticated model catalog instead of a hardcoded model allowlist, including newly available models such as `gpt-6.1-sol`.
+- Cache capabilities per resolved account, preserve official endpoint checks, and distinguish unavailable discovery from unsupported models.
+- Preserve provider-reported pricing for newly discovered models rather than guessing Fast multipliers.
+
 ## 0.53.1
 
 ### Patch Changes

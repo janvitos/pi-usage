@@ -67,6 +67,7 @@ function response(): Promise<Response> {
 		new Response(
 			JSON.stringify({
 				rate_limit: { primary_window: { used_percent: 20, limit_window_seconds: 18_000 } },
+				models: [{ slug: "gpt-5.4", service_tiers: [{ id: "priority" }] }],
 			}),
 			{ status: 200 },
 		),

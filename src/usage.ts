@@ -501,6 +501,7 @@ export default function usageExtension(
 				"Checking current usage…",
 			);
 			if (!stableCurrent) return;
+			await fastRuntime.discover(ctx);
 			publishStableCurrent(ctx, stableCurrent);
 			let current = stableCurrent.outcome;
 			let visibleStates: ProviderUsageState[] = [current.state];

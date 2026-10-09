@@ -1,13 +1,27 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-	CODEX_FAST_MODEL_IDS,
-	codexFastAvailability,
-	codexFastRequestTier,
+	codexFastAvailability as availability,
 	codexFastStatusLabel,
 	correctCodexFastMessageCost,
-	rewriteCodexFastPayload,
+	codexFastRequestTier as requestTier,
+	rewriteCodexFastPayload as rewritePayload,
 } from "../src/codex-fast.js";
+
+const CODEX_FAST_MODEL_IDS = new Set([
+	"gpt-5.4",
+	"gpt-5.5",
+	"gpt-5.6-luna",
+	"gpt-5.6-sol",
+	"gpt-5.6-terra",
+	"gpt-6.1-sol",
+]);
+const codexFastAvailability = (model: never, enabled: boolean) =>
+	availability(model, enabled, CODEX_FAST_MODEL_IDS);
+const codexFastRequestTier = (model: never, enabled: boolean) =>
+	requestTier(model, enabled, CODEX_FAST_MODEL_IDS);
+const rewriteCodexFastPayload = (payload: unknown, model: never, enabled: boolean) =>
+	rewritePayload(payload, model, enabled, CODEX_FAST_MODEL_IDS);
 
 const model = (id = "gpt-5.4", overrides: Record<string, unknown> = {}) => ({
 	id,
@@ -32,13 +46,14 @@ const usage = {
 	cost: { input: 0.00025, output: 0.0003, cacheRead: 0.0000025, cacheWrite: 0, total: 0.0005525 },
 };
 
-test("the supported model set matches the inspected Codex catalog", () => {
+test("eligibility follows discovered capabilities including newly introduced models", () => {
 	assert.deepEqual([...CODEX_FAST_MODEL_IDS].sort(), [
 		"gpt-5.4",
 		"gpt-5.5",
 		"gpt-5.6-luna",
 		"gpt-5.6-sol",
 		"gpt-5.6-terra",
+		"gpt-6.1-sol",
 	]);
 	for (const id of CODEX_FAST_MODEL_IDS) {
 		assert.deepEqual(codexFastAvailability(model(id) as never, true), {

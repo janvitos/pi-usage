@@ -87,10 +87,13 @@ Fast is about 1.5× faster and uses more of your plan allowance.
 The preference defaults to Off and is saved as `codexFastMode` in Pi's user agent directory as `pi-usage.json`, normally `~/.pi/agent/pi-usage.json`.
 The extension reloads this file at every session start and does not create it until the first successful toggle.
 
-Fast currently applies only to official `openai-codex-responses` requests for `gpt-5.4`, `gpt-5.5`, `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` at `https://chatgpt.com`.
+Fast applies to official `openai-codex-responses` requests at `https://chatgpt.com` when the authenticated Codex model catalog advertises Fast support (`service_tiers`, with legacy `additional_speed_tiers` compatibility). New models are discovered without an extension update.
+Capabilities are cached per resolved account in memory for five minutes. A failed refresh can use the same account's cached capabilities; without a cache, the extension reports that support could not be verified rather than claiming the model is unsupported.
+Discovery runs on session start, model changes, `/fast`, `/usage`, and provider requests. Credentials are never stored in the capability cache.
+Fast cost correction is limited to previously verified pricing; newly discovered models retain Pi's provider-reported cost instead of applying a guessed multiplier.
 It sends `service_tier: "priority"` while enabled and explicit `service_tier: "default"` otherwise.
 The statusline adds `fast` only while the preference is effective, for example `codex fast 41% 5h`.
-Unsupported models and custom or proxy origins are left unchanged.
+Custom or proxy origins are left unchanged. Official Codex requests use standard routing when Fast is disabled or support cannot be established.
 
 `/fast` supports TUI and RPC mode, accepts no arguments, and rejects print or JSON mode before mutation.
 A toggle affects provider requests whose payload hook starts after the save; a request already sent is unchanged.
@@ -224,7 +227,7 @@ Behavior changes:
 - A provider may not return a safe human-readable account identity.
   In that case the provider and runtime credential state remain visible without exposing secrets.
 - Immediate account-change events are not available from Pi; auth is re-resolved before commands, turns, and lifecycle refreshes.
-- Fast model support is intentionally conservative and may require an extension update when Codex adds or removes service tiers.
+- Fast model support is discovered from Codex's authenticated catalog. Catalog API changes may still require an extension update.
 - Another later-loaded extension can replace the final provider payload, so arbitrary third-party payload-rewrite conflicts cannot be prevented.
 
 ## 🛠️ Development and publishing

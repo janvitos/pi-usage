@@ -4,7 +4,8 @@ import type { PiModel } from "./types.js";
 export const CODEX_FAST_SERVICE_TIER = "priority";
 export const CODEX_STANDARD_SERVICE_TIER = "default";
 
-export const CODEX_FAST_MODEL_IDS: ReadonlySet<string> = new Set([
+// Verified pricing only; this is not an eligibility gate.
+const VERIFIED_FAST_PRICING_IDS: ReadonlySet<string> = new Set([
 	"gpt-5.4",
 	"gpt-5.5",
 	"gpt-5.6-luna",
@@ -20,6 +21,7 @@ export type CodexFastAvailability =
 export function codexFastAvailability(
 	model: PiModel | undefined,
 	enabled: boolean,
+	supported?: ReadonlySet<string>,
 ): CodexFastAvailability {
 	if (model?.provider !== "openai-codex") return { kind: "not-codex" };
 	if (!isOfficialCodexModel(model)) {
@@ -28,7 +30,13 @@ export function codexFastAvailability(
 			reason: "Fast mode requires the official OpenAI Codex Responses endpoint.",
 		};
 	}
-	if (!CODEX_FAST_MODEL_IDS.has(model.id)) {
+	if (!supported) {
+		return {
+			kind: "unavailable",
+			reason: "Could not verify Codex Fast support; retry when the model catalog is available.",
+		};
+	}
+	if (!supported.has(model.id)) {
 		return {
 			kind: "unavailable",
 			reason: `${model.id} does not advertise Codex Fast support.`,
@@ -37,16 +45,21 @@ export function codexFastAvailability(
 	return { kind: "available", enabled };
 }
 
-export function codexFastIsEffective(model: PiModel | undefined, enabled: boolean): boolean {
-	return codexFastAvailability(model, enabled).kind === "available" && enabled;
+export function codexFastIsEffective(
+	model: PiModel | undefined,
+	enabled: boolean,
+	supported?: ReadonlySet<string>,
+): boolean {
+	return codexFastAvailability(model, enabled, supported).kind === "available" && enabled;
 }
 
 export function codexFastRequestTier(
 	model: PiModel | undefined,
 	enabled: boolean,
+	supported?: ReadonlySet<string>,
 ): typeof CODEX_FAST_SERVICE_TIER | typeof CODEX_STANDARD_SERVICE_TIER | undefined {
 	if (!isOfficialCodexModel(model)) return undefined;
-	return enabled && CODEX_FAST_MODEL_IDS.has(model.id)
+	return enabled && supported?.has(model.id)
 		? CODEX_FAST_SERVICE_TIER
 		: CODEX_STANDARD_SERVICE_TIER;
 }
@@ -55,8 +68,9 @@ export function rewriteCodexFastPayload(
 	payload: unknown,
 	model: PiModel | undefined,
 	enabled: boolean,
+	supported?: ReadonlySet<string>,
 ): unknown | undefined {
-	const serviceTier = codexFastRequestTier(model, enabled);
+	const serviceTier = codexFastRequestTier(model, enabled, supported);
 	if (!serviceTier || !isRecord(payload)) return undefined;
 	return { ...payload, service_tier: serviceTier };
 }
@@ -67,7 +81,9 @@ export function correctCodexFastMessageCost(
 	fastRequested: boolean,
 ): unknown | undefined {
 	if (
-		!codexFastIsEffective(model, fastRequested) ||
+		!fastRequested ||
+		!isOfficialCodexModel(model) ||
+		!VERIFIED_FAST_PRICING_IDS.has(model.id) ||
 		!isRecord(message) ||
 		message.role !== "assistant" ||
 		message.provider !== model?.provider ||
@@ -94,7 +110,7 @@ export function codexFastStatusLabel(status: string, enabled: boolean): string {
 	return status === "codex" ? "codex fast" : `codex fast${status.slice("codex".length)}`;
 }
 
-function isOfficialCodexModel(
+export function isOfficialCodexModel(
 	model: PiModel | undefined,
 ): model is PiModel & { api: "openai-codex-responses" } {
 	if (model?.provider !== "openai-codex" || !hasApi(model, "openai-codex-responses")) {

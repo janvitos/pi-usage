@@ -216,6 +216,10 @@ export async function resolveUsageAuth(
 		}
 	}
 	const headers: Record<string, string> = { Authorization: authorization };
+	if (adapter.id === "openai-codex") {
+		const accountId = headerValue(auth.headers, "ChatGPT-Account-Id");
+		if (accountId) headers["ChatGPT-Account-Id"] = accountId;
+	}
 	if (adapter.id === "anthropic") headers["anthropic-beta"] = "oauth-2025-04-20";
 	const secrets = [auth.apiKey, headerValue(auth.headers, "Authorization"), authorization].filter(
 		(value): value is string => Boolean(value),
@@ -276,6 +280,8 @@ export async function fetchProviderJson(
 	request: {
 		method?: "GET" | "POST";
 		body?: Record<string, unknown>;
+		maxSuccessBodyBytes?: number;
+		redirect?: RequestRedirect;
 	} = {},
 ): Promise<Record<string, unknown>> {
 	const controller = new AbortController();
@@ -295,6 +301,7 @@ export async function fetchProviderJson(
 		}
 		const response = await fetch(url, {
 			method: request.method ?? "GET",
+			...(request.redirect ? { redirect: request.redirect } : {}),
 			headers,
 			...(request.body ? { body: JSON.stringify(request.body) } : {}),
 			signal: controller.signal,
@@ -303,7 +310,7 @@ export async function fetchProviderJson(
 			throw Object.assign(new Error("Usage query aborted."), { name: "AbortError" });
 		const text = await readBoundedResponse(
 			response,
-			response.ok ? MAX_SUCCESS_BODY_BYTES : MAX_ERROR_BODY_BYTES,
+			response.ok ? (request.maxSuccessBodyBytes ?? MAX_SUCCESS_BODY_BYTES) : MAX_ERROR_BODY_BYTES,
 			!response.ok,
 			description,
 		);
