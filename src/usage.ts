@@ -21,7 +21,6 @@ import {
 	resolveCodexResetAuth,
 } from "./codex-resets.js";
 import { awaitWithDeadline, errorMessage, runWithConcurrency, UsageCache } from "./core.js";
-import { installUsageFooter } from "./footer.js";
 import {
 	formatProviderStates,
 	formatUsageStatusline,
@@ -948,7 +947,6 @@ export default function usageExtension(
 				return;
 			}
 			try {
-				installUsageFooter(ctx);
 				await showMenu(ctx);
 			} catch (error) {
 				if (isStaleExtensionContextError(error) || isAbortError(error)) return;
@@ -962,23 +960,18 @@ export default function usageExtension(
 		activeControllers.clear();
 		statusController = undefined;
 		sessionActive = true;
-		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
 	pi.on("session_tree", (_event, ctx) => {
-		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
 	pi.on("model_select", (event, ctx) => {
-		installUsageFooter(ctx);
 		startStatusRefresh(ctx, event.model, false);
 	});
 	pi.on("turn_start", (_event, ctx) => {
-		installUsageFooter(ctx);
 		startStatusRefresh(ctx, ctx.model, false);
 	});
 	pi.on("agent_settled", (_event, ctx) => {
-		installUsageFooter(ctx);
 		const adapter = adapterForProvider(ctx.model?.provider);
 		if (adapter) cache.clearProvider(adapter.id);
 		startStatusRefresh(ctx, ctx.model, false);

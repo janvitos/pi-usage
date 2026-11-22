@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { initTheme } from "@earendil-works/pi-coding-agent";
+import { type ExtensionContext, initTheme } from "@earendil-works/pi-coding-agent";
 import { test, vi } from "vitest";
 import usageExtension from "../src/usage.js";
 import { createMockContext, createMockPi } from "../test-support.js";
@@ -453,6 +453,75 @@ test("current auth appearance during a command is revalidated before display", a
 	assert.match(title, /test-key/);
 	assert.ok(authCalls >= 3);
 });
+
+for (const mode of ["tui", "rpc", "print", "json"] as const) {
+	test(`usage lifecycle publishes status and leaves the active footer untouched in ${mode} mode`, async (t) => {
+		const originalFetch = globalThis.fetch;
+		t.onTestFinished(() => {
+			globalThis.fetch = originalFetch;
+		});
+		globalThis.fetch = usageFetch;
+		const mock = createMockPi();
+		usageExtension(mock.pi);
+		const harness = createMockContext({
+			mode,
+			model: openRouterModel,
+			select: async () => "Close",
+			modelRegistry: {
+				getProviderAuth: async () => ({ auth: { apiKey: "openrouter-key" } }),
+				getAvailable: () => [openRouterModel],
+				getAll: () => [openRouterModel],
+				getProviderAuthStatus: () => ({ configured: true }),
+				getProviderDisplayName: (provider: string) => provider,
+			},
+		});
+		const ctx = harness.ctx as ExtensionContext;
+		const activeFooter = () => ({ render: () => ["custom footer"], invalidate() {} });
+		ctx.ui.setFooter(activeFooter);
+		const setFooter = vi.spyOn(ctx.ui, "setFooter");
+		const setStatus = vi.spyOn(ctx.ui, "setStatus");
+		const emit = async (name: string, event: unknown, context = ctx) => {
+			const handlers = mock.events.get(name);
+			assert.ok(handlers?.length, `missing ${name} lifecycle hook`);
+			for (const handler of handlers) await handler(event, context);
+			await settle();
+		};
+
+		for (const name of [
+			"session_start",
+			"session_tree",
+			"model_select",
+			"turn_start",
+			"agent_settled",
+		]) {
+			await emit(name, { model: openRouterModel });
+			assert.equal(harness.statuses.get("usage"), "$75.00 left");
+			assert.equal(setFooter.mock.calls.length, 0, name);
+		}
+		for (const name of ["usage", "fast"]) {
+			const command = mock.commands.get(name);
+			assert.ok(command);
+			if (ctx.hasUI) await command.handler("", ctx);
+			else {
+				await assert.rejects(async () => command.handler("", ctx), /requires TUI or RPC mode/u);
+			}
+		}
+		assert.ok(
+			setStatus.mock.calls.some(([key, value]) => key === "usage" && value === "$75.00 left"),
+		);
+
+		const unsupportedCtx = {
+			...ctx,
+			model: { ...ctx.model, provider: "unsupported" },
+		} as ExtensionContext;
+		await emit("model_select", { model: unsupportedCtx.model }, unsupportedCtx);
+		assert.equal(harness.statuses.get("usage"), undefined);
+		await emit("session_shutdown", {});
+		assert.equal(harness.statuses.get("usage"), undefined);
+		assert.equal(setFooter.mock.calls.length, 0);
+		assert.equal(harness.footer, activeFooter);
+	});
+}
 
 test("automatic lifecycle refresh starts asynchronously", () => {
 	const mock = createMockPi();
