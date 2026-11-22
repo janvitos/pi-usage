@@ -142,7 +142,7 @@ Opaque credit and account IDs are never shown or persisted by the extension.
 - Semantics: the allowance reported for the active Copilot plan—AI credits for current usage-based billing, premium requests for legacy annual billing, or chat requests for Copilot Free's limited response shape
 - Source: GitHub's undocumented `GET /copilot_internal/user` endpoint
 - Displayed data: entitlement, used allowance, percentage used, reset time, plan, and any additional usage beyond the included allowance
-- Statusline examples: `copilot credits 300/1500 20%`, `copilot 55/300 18%`, or `copilot chat 10/50 20%`
+- Statusline examples: `copilot credits 300/1,500 20%`, `copilot 55/300 18%`, or `copilot chat 10/50 20%` (grouping follows the runtime's default locale)
 
 GitHub's quota endpoint requires the original GitHub OAuth token rather than the short-lived Copilot inference token exposed by runtime auth.
 `pi-usage` therefore supports Copilot accounts created through Pi's `/login` flow, reads that stored credential through Pi's public API, and uses it only when its short-lived access token matches the active runtime credential.
@@ -187,6 +187,7 @@ The `usage` status item is active only for the selected model provider.
 It refreshes asynchronously at session start, when the session tree or model changes, at the start of a new turn, after Fast-mode changes, and after explicit `/usage` actions. It does not run an idle timer, so leaving Pi unattended does not cause background status redraws; the five-minute cache still bounds ordinary non-forced queries. The status is cleared when the model changes to an unsupported provider.
 
 Usage status text is rendered with Pi’s footer `dim` theme color. The footer preserves Pi’s model name and thinking level alongside session statistics, with usage on a dedicated line. Manual another-provider and all-provider queries never publish to the statusline.
+Credit balances and Copilot quota counts, including additional usage, use locale-appropriate grouping and decimal separators in both the statusline and detailed reports (for example, `1,234.5` under `en-US`). Dollar formatting is unchanged.
 `@narumitw/pi-statusline` supplies the default `📊` icon; `pi-usage` publishes text-only values.
 
 ## Claude subscription usage

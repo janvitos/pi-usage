@@ -131,11 +131,13 @@ function formatGitHubCopilotReport(lines: string[], report: UsageReport): void {
 	const percent = percentUsed(quota);
 	const reset = quota.resetsAt ? ` (resets ${formatReset(quota.resetsAt)})` : "";
 	lines.push(
-		`${`${quota.label}:`.padEnd(VALUE_COLUMN)}${quotaUsed(quota)} of ${quota.limit} used · ${percent}%${reset}`,
+		`${`${quota.label}:`.padEnd(VALUE_COLUMN)}${formatCount(quotaUsed(quota))} of ${formatCount(quota.limit)} used · ${percent}%${reset}`,
 	);
 	const overage = report.metrics.find((metric) => metric.id === "overage-used");
 	if (typeof overage?.value === "number" && overage.value > 0) {
-		lines.push(`${"Additional usage:".padEnd(VALUE_COLUMN)}${overage.value} ${quota.label}`);
+		lines.push(
+			`${"Additional usage:".padEnd(VALUE_COLUMN)}${formatCount(overage.value)} ${quota.label}`,
+		);
 	}
 }
 
@@ -147,8 +149,10 @@ function formatGitHubCopilotStatusline(report: UsageReport): string {
 	}
 	const overage = report.metrics.find((metric) => metric.id === "overage-used");
 	const overageSuffix =
-		typeof overage?.value === "number" && overage.value > 0 ? ` +${overage.value} over` : "";
-	return `${kind === "premium" ? "" : `${kind} `}${quotaUsed(quota)}/${quota.limit} ${percentUsed(quota)}%${overageSuffix}`;
+		typeof overage?.value === "number" && overage.value > 0
+			? ` +${formatCount(overage.value)} over`
+			: "";
+	return `${kind === "premium" ? "" : `${kind} `}${formatCount(quotaUsed(quota))}/${formatCount(quota.limit)} ${percentUsed(quota)}%${overageSuffix}`;
 }
 
 function findGitHubCopilotQuota(report: UsageReport): UsageBucket | undefined {
@@ -388,7 +392,12 @@ function formatHourResetCountdown(resetsAt: number, now: number): string {
 
 function formatMetricValue(value: number | string, unit: UsageBucket["unit"] | undefined): string {
 	if (unit === "usd" && typeof value === "number") return formatUsd(value);
+	if (typeof value === "number") return formatCount(value);
 	return String(value);
+}
+
+function formatCount(value: number): string {
+	return new Intl.NumberFormat(undefined, { maximumFractionDigits: 20 }).format(value);
 }
 
 function formatUsd(value: number): string {

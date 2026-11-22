@@ -9,6 +9,9 @@ import {
 	styleUsageStatusline,
 } from "../src/index.js";
 
+const countFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 20 });
+const formatCount = (value: number) => countFormatter.format(value);
+
 test("usage percentage styling colours used quota by 30/70 thresholds", () => {
 	const report = normalizeCodexBackendPayload(
 		{
@@ -98,8 +101,10 @@ test("GitHub Copilot adapter preserves AI-credit billing semantics", () => {
 		period: "monthly",
 		resetsAt: 1_785_542_400,
 	});
-	assert.match(formatUsageReport(report, "current"), /AI credits:\s+300 of 1500 used · 20%/);
-	assert.equal(formatUsageStatusline(report), "credits 300/1500 20%");
+	assert.ok(
+		formatUsageReport(report, "current").includes(`300 of ${formatCount(1_500)} used · 20%`),
+	);
+	assert.equal(formatUsageStatusline(report), `credits 300/${formatCount(1_500)} 20%`);
 });
 
 test("GitHub Copilot adapter represents overage without rejecting negative remaining quota", () => {
@@ -125,7 +130,10 @@ test("GitHub Copilot adapter represents overage without rejecting negative remai
 		{ id: "overage-used", label: "Additional usage", value: 100, unit: "count" },
 	]);
 	assert.match(formatUsageReport(report, "current"), /Additional usage:\s+100 AI credits/);
-	assert.equal(formatUsageStatusline(report), "credits 1500/1500 100% +100 over");
+	assert.equal(
+		formatUsageStatusline(report),
+		`credits ${formatCount(1_500)}/${formatCount(1_500)} 100% +100 over`,
+	);
 });
 
 test("GitHub Copilot adapter normalizes the free-tier quota shape", () => {
